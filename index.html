@@ -214,77 +214,121 @@ function handleFile(file) {
   reader.readAsDataURL(file);
 }
 
-function rgbToHsl(r,g,b){
+function rgbToHsv(r,g,b){
   r/=255;g/=255;b/=255;
-  const max=Math.max(r,g,b), min=Math.min(r,g,b);
-  let h, s, l=(max+min)/2;
-  if(max===min){ h=0; s=0; }
-  else {
-    const d=max-min;
-    s = l>0.5 ? d/(2-max-min) : d/(max+min);
-    switch(max){
-      case r: h=(g-b)/d + (g<b?6:0); break;
-      case g: h=(b-r)/d + 2; break;
-      case b: h=(r-g)/d + 4; break;
-    }
-    h*=60;
+  const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
+  let h=0;
+  if (d){
+    if (mx===r) h = ((g-b)/d) % 6;
+    else if (mx===g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60; if (h<0) h += 360;
   }
-  return [h,s,l];
+  const s = mx === 0 ? 0 : d/mx;
+  return [h, s, mx];
 }
 
-function sampleRegion(ctx, x, y, w, h){
-  const data = ctx.getImageData(x,y,w,h).data;
-  let r=0,g=0,b=0,n=0;
-  for (let i=0;i<data.length;i+=4){
-    const R=data[i], G=data[i+1], B=data[i+2];
-    const mx=Math.max(R,G,B), mn=Math.min(R,G,B);
-    if (mx < 20 || mn > 245) continue;          // pure black/white
-    if (mx - mn < 10 && mx > 210) continue;     // plain bright walls
-    r+=R; g+=G; b+=B; n++;
-  }
-  if (!n) return null;
-  return [Math.round(r/n), Math.round(g/n), Math.round(b/n)];
+function hsvToRgb(h,s,v){
+  const c = v*s, x = c * (1 - Math.abs(((h/60)%2) - 1)), m = v - c;
+  let r=0,g=0,b=0;
+  if (h<60){r=c;g=x;} else if (h<120){r=x;g=c;}
+  else if (h<180){g=c;b=x;} else if (h<240){g=x;b=c;}
+  else if (h<300){r=x;b=c;} else {r=c;b=x;}
+  return [Math.round((r+m)*255), Math.round((g+m)*255), Math.round((b+m)*255)];
 }
 
-function hueDistance(a, b){
-  // shortest angular distance on hue wheel (0-180)
-  const d = Math.abs(a - b) % 360;
+function hueDistance(a,b){
+  const d = Math.abs(a-b) % 360;
   return d > 180 ? 360 - d : d;
 }
 
+// Build a saturation-weighted hue+value histogram, return dominant chromatic color.
+function dominantChromaticColor(ctx, x, y, w, h){
+  const data = ctx.getImageData(x|0, y|0, w|0, h|0).data;
+  // 18 hue bins (20° each) × 3 value bins = 54 buckets
+  const HBINS = 18, VBINS = 3;
+  const buckets = new Float32Array(HBINS*VBINS);
+  const sums = []; // accumulate r,g,b per bucket
+  for (let i = 0; i < HBINS*VBINS; i++) sums.push([0,0,0,0]);
+
+  let greySum = [0,0,0,0]; // fallback for grey-dominant regions
+
+  for (let i = 0; i < data.length; i += 4){
+    const R = data[i], G = data[i+1], B = data[i+2];
+    const [hu, sa, va] = rgbToHsv(R, G, B);
+    if (va < 0.08 || va > 0.97) continue;        // skip near-black / blown highlights
+    if (sa < 0.18) {                              // grey-ish — track separately
+      greySum[0]+=R; greySum[1]+=G; greySum[2]+=B; greySum[3]+=1;
+      continue;
+    }
+    const hb = Math.min(HBINS-1, Math.floor(hu / (360/HBINS)));
+    const vb = Math.min(VBINS-1, Math.floor(va * VBINS));
+    const idx = vb*HBINS + hb;
+    const weight = sa * sa;                       // square so vivid pixels dominate
+    buckets[idx] += weight;
+    sums[idx][0] += R*weight;
+    sums[idx][1] += G*weight;
+    sums[idx][2] += B*weight;
+    sums[idx][3] += weight;
+  }
+
+  // Find top bucket
+  let best = -1, bestW = 0;
+  for (let i = 0; i < buckets.length; i++) if (buckets[i] > bestW){ bestW = buckets[i]; best = i; }
+
+  if (best === -1 || bestW < 0.5) {
+    // Region is mostly grey — use grey average
+    if (greySum[3] === 0) return null;
+    return [Math.round(greySum[0]/greySum[3]), Math.round(greySum[1]/greySum[3]), Math.round(greySum[2]/greySum[3])];
+  }
+  const [r,g,b,wsum] = sums[best];
+  return [Math.round(r/wsum), Math.round(g/wsum), Math.round(b/wsum)];
+}
+
 function colorScore(target, anchor){
-  const [h1,s1,l1] = rgbToHsl(...target);
-  const [h2,s2,l2] = rgbToHsl(...anchor);
-  // Hue dominates (×3), then saturation, then lightness
-  const hd = hueDistance(h1,h2) / 180;       // 0..1
-  const sd = Math.abs(s1 - s2);              // 0..1
-  const ld = Math.abs(l1 - l2);              // 0..1
-  return hd*3 + sd*1.5 + ld*1;
+  const [h1,s1,v1] = rgbToHsv(...target);
+  const [h2,s2,v2] = rgbToHsv(...anchor);
+  // If target is very desaturated, hue is meaningless — score by value/saturation only
+  if (s1 < 0.15 && s2 < 0.15) return Math.abs(v1-v2)*2;
+  const hd = hueDistance(h1,h2) / 180;
+  const sd = Math.abs(s1-s2);
+  const vd = Math.abs(v1-v2);
+  return hd*4 + sd*1 + vd*0.8;
 }
 
 function analyze(img) {
   const c = document.createElement("canvas");
-  const w = 160, h = 160;
-  c.width = w; c.height = h;
+  const W = 200, H = 200;
+  c.width = W; c.height = H;
   const ctx = c.getContext("2d");
-  ctx.drawImage(img, 0, 0, w, h);
+  ctx.drawImage(img, 0, 0, W, H);
 
-  // Three regions: hair/top, face/middle, body/bottom
+  // 5 regions: top, middle (face), bottom, left, right
   const regions = [
-    sampleRegion(ctx, w*0.2, h*0.05, w*0.6, h*0.25),  // top
-    sampleRegion(ctx, w*0.25, h*0.30, w*0.5, h*0.35), // middle
-    sampleRegion(ctx, w*0.15, h*0.65, w*0.7, h*0.30), // bottom
+    dominantChromaticColor(ctx, W*0.15, H*0.02, W*0.7,  H*0.30),
+    dominantChromaticColor(ctx, W*0.25, H*0.30, W*0.5,  H*0.35),
+    dominantChromaticColor(ctx, W*0.10, H*0.60, W*0.8,  H*0.38),
+    dominantChromaticColor(ctx, 0,      H*0.20, W*0.25, H*0.6),
+    dominantChromaticColor(ctx, W*0.75, H*0.20, W*0.25, H*0.6),
   ].filter(Boolean);
 
   if (!regions.length) regions.push([128,128,128]);
 
-  // Score each Pokémon: best (lowest) score across any region, with bonus for matching multiple
+  // For each Pokémon, find its best-matching region; score = best region match
   const scored = POKEMON.map(p => {
-    const scores = regions.map(rgb => colorScore(rgb, p.rgb));
-    const min = Math.min(...scores);
-    const avg = scores.reduce((a,b)=>a+b,0) / scores.length;
-    return { p, score: min*0.7 + avg*0.3, regionRgb: regions[scores.indexOf(min)] };
-  }).sort((a,b)=>a.score-b.score);
+    let bestScore = Infinity, bestRgb = regions[0];
+    for (const rgb of regions) {
+      const s = colorScore(rgb, p.rgb);
+      if (s < bestScore) { bestScore = s; bestRgb = rgb; }
+    }
+    return { p, score: bestScore, regionRgb: bestRgb };
+  }).sort((a,b) => a.score - b.score);
+
+  // Tiebreaker via image fingerprint so near-ties don't always pick the same one
+  const fp = (regions[0][0]*7 + regions[0][1]*13 + regions[0][2]*17 + regions.length*23) % POKEMON.length;
+  if (scored.length > 1 && Math.abs(scored[0].score - scored[1].score) < 0.05) {
+    if (scored[1].p === POKEMON[fp]) [scored[0], scored[1]] = [scored[1], scored[0]];
+  }
 
   const winner = scored[0];
   showResult(winner.p, winner.regionRgb, scored.slice(1,3).map(s=>s.p));
