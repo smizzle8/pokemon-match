@@ -364,52 +364,46 @@ const TYPE_COLORS = {
 
 // ─── Cartoon Network characters (no external images — styled avatars) ─────────
 // Same 8 base features as Pokémon; will be augmented with forehead/symmetry/mouth_fill below.
+// `wiki` is a Wikipedia article slug — image fetched at runtime via REST API.
+// Falls back to gradient avatar with initial when no Wikipedia page exists.
 const CN_CHARACTERS = [
-  // Powerpuff Girls — Fandom CDN
-  { name:"Blossom",   show:"Powerpuff Girls",     initial:"B", color:"#ff6b9d", img:"https://static.wikia.nocookie.net/powerpuffgirls/images/4/49/Blossom-PPG.png", wh:1.10, eye:0.30, open:0.65, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"giant-eyed leader, round face" },
-  { name:"Bubbles",   show:"Powerpuff Girls",     initial:"B", color:"#5dc1f0", img:"https://static.wikia.nocookie.net/powerpuffgirls/images/2/2a/Bubbles-PPG.png", wh:1.10, eye:0.30, open:0.68, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"sweet huge-eyed cheery" },
-  { name:"Buttercup", show:"Powerpuff Girls",     initial:"B", color:"#7ed957", img:"https://static.wikia.nocookie.net/powerpuffgirls/images/2/2b/Buttercup-PPG.png", wh:1.10, eye:0.28, open:0.55, jaw:0.55, nose:0.02, mouth:0.20, brow_h:0.40, eye_gap:0.18, tag:"tomboy huge-eyed scrappy" },
-  { name:"Mojo Jojo", show:"Powerpuff Girls",     initial:"M", color:"#3a9b3a", img:"https://static.wikia.nocookie.net/powerpuffgirls/images/9/96/Mojo-Jojo-PPG.png", wh:0.65, eye:0.10, open:0.22, jaw:0.65, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.20, tag:"long evil glaring" },
-  // Adventure Time — Fandom CDN
-  { name:"Finn",          show:"Adventure Time",  initial:"F", color:"#5fcde4", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/d/dc/Finn_The_Human_S5.png", wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.05, mouth:0.30, brow_h:0.45, eye_gap:0.28, tag:"brave round-cheeked adventurous" },
-  { name:"Jake",          show:"Adventure Time",  initial:"J", color:"#f7b955", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/8/8e/Jake_the_Dog.png", wh:1.10, eye:0.10, open:0.30, jaw:1.00, nose:0.05, mouth:0.55, brow_h:0.50, eye_gap:0.30, tag:"chill wide-grinned dog" },
-  { name:"Princess Bubblegum", show:"Adventure Time", initial:"P", color:"#ff9ed8", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/4/4c/Princess_Bubblegum.png", wh:0.85, eye:0.18, open:0.55, jaw:0.65, nose:0.04, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"smart round elegant pink" },
-  { name:"Marceline",     show:"Adventure Time",  initial:"M", color:"#9a8fcf", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/3/35/Marceline_the_Vampire_Queen.png", wh:0.72, eye:0.16, open:0.40, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"long mysterious cool vampire" },
-  { name:"Ice King",      show:"Adventure Time",  initial:"I", color:"#7dc6e0", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/0/05/Ice_King.png", wh:0.65, eye:0.10, open:0.28, jaw:0.60, nose:0.28, mouth:0.22, brow_h:0.50, eye_gap:0.18, tag:"long pointy nose lonely" },
-  { name:"BMO",           show:"Adventure Time",  initial:"B", color:"#7ec98a", img:"https://static.wikia.nocookie.net/adventuretimewithfinnandjake/images/2/29/BMO.png", wh:1.20, eye:0.20, open:0.60, jaw:1.10, nose:0.00, mouth:0.30, brow_h:0.45, eye_gap:0.30, tag:"square boxy little buddy" },
-  // Steven Universe — Fandom CDN
-  { name:"Steven",        show:"Steven Universe", initial:"S", color:"#ff5d5d", img:"https://static.wikia.nocookie.net/steven_universe/images/f/f1/Steven_Universe.png", wh:1.05, eye:0.20, open:0.55, jaw:0.65, nose:0.05, mouth:0.22, brow_h:0.42, eye_gap:0.22, tag:"round chubby-cheeked wholesome" },
-  { name:"Garnet",        show:"Steven Universe", initial:"G", color:"#5b2a86", img:"https://static.wikia.nocookie.net/steven_universe/images/c/c8/Garnet.png", wh:0.85, eye:0.10, open:0.20, jaw:0.92, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.28, tag:"square stoic strong leader" },
-  { name:"Pearl",         show:"Steven Universe", initial:"P", color:"#f0d8c6", img:"https://static.wikia.nocookie.net/steven_universe/images/4/47/Pearl.png", wh:0.65, eye:0.16, open:0.45, jaw:0.55, nose:0.18, mouth:0.16, brow_h:0.36, eye_gap:0.20, tag:"long pointed elegant precise" },
-  { name:"Amethyst",      show:"Steven Universe", initial:"A", color:"#a164d6", img:"https://static.wikia.nocookie.net/steven_universe/images/9/9e/Amethyst.png", wh:1.05, eye:0.18, open:0.45, jaw:0.85, nose:0.06, mouth:0.26, brow_h:0.45, eye_gap:0.26, tag:"round mischievous laid-back" },
-  { name:"Connie",        show:"Steven Universe", initial:"C", color:"#d18a5a", img:"https://static.wikia.nocookie.net/steven_universe/images/4/4a/Connie.png", wh:0.85, eye:0.18, open:0.55, jaw:0.62, nose:0.05, mouth:0.20, brow_h:0.40, eye_gap:0.24, tag:"oval thoughtful sharp" },
-  // Foster's Home
-  { name:"Mac",           show:"Foster's Home",   initial:"M", color:"#5f9bd5", img:"https://static.wikia.nocookie.net/fostershome/images/8/8e/Mac.png", wh:1.00, eye:0.20, open:0.55, jaw:0.60, nose:0.04, mouth:0.20, brow_h:0.40, eye_gap:0.22, tag:"round big-eyed earnest kid" },
-  { name:"Bloo",          show:"Foster's Home",   initial:"B", color:"#7ec0ee", img:"https://static.wikia.nocookie.net/fostershome/images/4/4f/Bloo.png", wh:0.85, eye:0.22, open:0.65, jaw:0.55, nose:0.00, mouth:0.18, brow_h:0.32, eye_gap:0.20, tag:"oval blob huge-eyed mischief" },
-  { name:"Eduardo",       show:"Foster's Home",   initial:"E", color:"#9d5ec4", img:"https://static.wikia.nocookie.net/fostershome/images/d/d5/Eduardo.png", wh:1.05, eye:0.16, open:0.45, jaw:0.95, nose:0.08, mouth:0.32, brow_h:0.50, eye_gap:0.28, tag:"big-jawed gentle softie" },
-  { name:"Wilt",          show:"Foster's Home",   initial:"W", color:"#e85e5e", img:"https://static.wikia.nocookie.net/fostershome/images/9/97/Wilt.png", wh:0.55, eye:0.16, open:0.50, jaw:0.55, nose:0.05, mouth:0.24, brow_h:0.32, eye_gap:0.18, tag:"super tall thin polite" },
-  { name:"Coco",          show:"Foster's Home",   initial:"C", color:"#f7d04a", img:"https://static.wikia.nocookie.net/fostershome/images/6/6e/Coco.png", wh:0.70, eye:0.18, open:0.45, jaw:0.60, nose:0.30, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"long beaky chaotic" },
-  // Amazing World of Gumball
-  { name:"Gumball",       show:"World of Gumball", initial:"G", color:"#5dc1f0", img:"https://static.wikia.nocookie.net/theamazingworldofgumball/images/2/29/Gumball-2.png", wh:1.00, eye:0.22, open:0.55, jaw:0.65, nose:0.04, mouth:0.22, brow_h:0.40, eye_gap:0.24, tag:"round blue-cat optimistic" },
-  { name:"Darwin",        show:"World of Gumball", initial:"D", color:"#ff8b3d", img:"https://static.wikia.nocookie.net/theamazingworldofgumball/images/4/4f/Darwin.png", wh:1.05, eye:0.24, open:0.60, jaw:0.70, nose:0.04, mouth:0.22, brow_h:0.38, eye_gap:0.26, tag:"round goldfish wide-eyed" },
-  { name:"Anais",         show:"World of Gumball", initial:"A", color:"#ffb6c8", img:"https://static.wikia.nocookie.net/theamazingworldofgumball/images/0/0d/Anais.png", wh:1.05, eye:0.22, open:0.55, jaw:0.62, nose:0.03, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"round bunny smart small" },
-  // Dexter's Laboratory
-  { name:"Dexter",        show:"Dexter's Lab",    initial:"D", color:"#f7b955", img:"https://static.wikia.nocookie.net/dexterslab/images/4/41/Dexter.png", wh:1.00, eye:0.14, open:0.30, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.45, eye_gap:0.20, tag:"glasses round genius small" },
-  { name:"Dee Dee",       show:"Dexter's Lab",    initial:"D", color:"#ffb6c8", img:"https://static.wikia.nocookie.net/dexterslab/images/d/d4/DeeDee.png", wh:0.85, eye:0.20, open:0.60, jaw:0.55, nose:0.04, mouth:0.22, brow_h:0.36, eye_gap:0.24, tag:"oval ditzy big-eyed dancer" },
-  { name:"Mandark",       show:"Dexter's Lab",    initial:"M", color:"#5b2a86", img:"https://static.wikia.nocookie.net/dexterslab/images/3/3e/Mandark.png", wh:0.62, eye:0.10, open:0.20, jaw:0.58, nose:0.20, mouth:0.20, brow_h:0.50, eye_gap:0.18, tag:"long sinister hair-helmet" },
-  // Regular Show
-  { name:"Mordecai",      show:"Regular Show",    initial:"M", color:"#5b9bd5", img:"https://static.wikia.nocookie.net/regularshow/images/5/5b/Mordecai.png", wh:0.65, eye:0.14, open:0.35, jaw:0.62, nose:0.20, mouth:0.18, brow_h:0.42, eye_gap:0.22, tag:"long blue jay slacker" },
-  { name:"Rigby",         show:"Regular Show",    initial:"R", color:"#a07a4a", img:"https://static.wikia.nocookie.net/regularshow/images/3/3a/Rigby.png", wh:0.85, eye:0.14, open:0.40, jaw:0.65, nose:0.10, mouth:0.22, brow_h:0.48, eye_gap:0.20, tag:"oval scruffy raccoon" },
-  // Misc shows
-  { name:"Johnny Bravo",  show:"Johnny Bravo",    initial:"J", color:"#f7d04a", img:"https://static.wikia.nocookie.net/cartoonnetwork/images/c/c2/JohnnyBravo.png", wh:0.95, eye:0.10, open:0.20, jaw:1.10, nose:0.10, mouth:0.30, brow_h:0.55, eye_gap:0.24, tag:"chiseled massive-jawed cocky" },
-  { name:"Courage",       show:"Courage Cowardly Dog", initial:"C", color:"#e85e9b", img:"https://static.wikia.nocookie.net/courage/images/2/2c/Courage.png", wh:1.10, eye:0.22, open:0.55, jaw:0.55, nose:0.08, mouth:0.18, brow_h:0.42, eye_gap:0.18, tag:"round terrified pink dog" },
-  { name:"Ed",            show:"Ed Edd n Eddy",   initial:"E", color:"#7ed957", img:"https://static.wikia.nocookie.net/eeneverything/images/0/0f/Ed-1.png", wh:0.95, eye:0.12, open:0.20, jaw:0.95, nose:0.08, mouth:0.45, brow_h:0.55, eye_gap:0.22, tag:"square dim wide-grinned" },
-  { name:"Edd (Double D)",show:"Ed Edd n Eddy",   initial:"D", color:"#7ec0ee", img:"https://static.wikia.nocookie.net/eeneverything/images/0/0d/Edd-1.png", wh:0.85, eye:0.13, open:0.30, jaw:0.62, nose:0.06, mouth:0.18, brow_h:0.40, eye_gap:0.20, tag:"oval polite gap-toothed smart" },
-  { name:"Eddy",          show:"Ed Edd n Eddy",   initial:"E", color:"#f7b955", img:"https://static.wikia.nocookie.net/eeneverything/images/9/91/Eddy-1.png", wh:1.05, eye:0.13, open:0.35, jaw:0.85, nose:0.06, mouth:0.30, brow_h:0.48, eye_gap:0.24, tag:"round scheming greedy short" },
-  { name:"Samurai Jack",  show:"Samurai Jack",    initial:"J", color:"#1a1a1a", img:"https://static.wikia.nocookie.net/samuraijack/images/8/8a/Jack.png", wh:0.78, eye:0.10, open:0.25, jaw:0.85, nose:0.18, mouth:0.20, brow_h:0.46, eye_gap:0.22, tag:"chiseled stoic samurai" },
-  { name:"Ben Tennyson",  show:"Ben 10",          initial:"B", color:"#7ed957", img:"https://static.wikia.nocookie.net/ben10/images/d/d8/Ben_Tennyson_OS.png", wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.06, mouth:0.24, brow_h:0.42, eye_gap:0.24, tag:"average-faced cheeky teen hero" },
-  { name:"Numbuh 1",      show:"Kids Next Door",  initial:"1", color:"#e85e5e", img:"https://static.wikia.nocookie.net/codenamekidsnextdoor/images/9/9b/Numbuh_1.png", wh:0.95, eye:0.10, open:0.25, jaw:0.70, nose:0.06, mouth:0.18, brow_h:0.48, eye_gap:0.22, tag:"round bald sunglasses tactical" },
-  { name:"Numbuh 4",      show:"Kids Next Door",  initial:"4", color:"#f7d04a", img:"https://static.wikia.nocookie.net/codenamekidsnextdoor/images/8/8d/Numbuh_4.png", wh:0.92, eye:0.12, open:0.28, jaw:0.72, nose:0.06, mouth:0.22, brow_h:0.50, eye_gap:0.24, tag:"oval scrappy blonde tough" },
+  { name:"Blossom",   show:"Powerpuff Girls",     initial:"B", color:"#ff6b9d", wiki:"Blossom_(Powerpuff_Girls)",  wh:1.10, eye:0.30, open:0.65, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"giant-eyed leader, round face" },
+  { name:"Bubbles",   show:"Powerpuff Girls",     initial:"B", color:"#5dc1f0", wiki:"Bubbles_(Powerpuff_Girls)",  wh:1.10, eye:0.30, open:0.68, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"sweet huge-eyed cheery" },
+  { name:"Buttercup", show:"Powerpuff Girls",     initial:"B", color:"#7ed957", wiki:"Buttercup_(Powerpuff_Girls)",wh:1.10, eye:0.28, open:0.55, jaw:0.55, nose:0.02, mouth:0.20, brow_h:0.40, eye_gap:0.18, tag:"tomboy huge-eyed scrappy" },
+  { name:"Mojo Jojo", show:"Powerpuff Girls",     initial:"M", color:"#3a9b3a", wiki:"Mojo_Jojo",                  wh:0.65, eye:0.10, open:0.22, jaw:0.65, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.20, tag:"long evil glaring" },
+  { name:"Finn",          show:"Adventure Time",  initial:"F", color:"#5fcde4", wiki:"Finn_the_Human",             wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.05, mouth:0.30, brow_h:0.45, eye_gap:0.28, tag:"brave round-cheeked adventurous" },
+  { name:"Jake",          show:"Adventure Time",  initial:"J", color:"#f7b955", wiki:"Jake_the_Dog",               wh:1.10, eye:0.10, open:0.30, jaw:1.00, nose:0.05, mouth:0.55, brow_h:0.50, eye_gap:0.30, tag:"chill wide-grinned dog" },
+  { name:"Princess Bubblegum", show:"Adventure Time", initial:"P", color:"#ff9ed8", wiki:"Adventure_Time",       wh:0.85, eye:0.18, open:0.55, jaw:0.65, nose:0.04, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"smart round elegant pink" },
+  { name:"Marceline",     show:"Adventure Time",  initial:"M", color:"#9a8fcf", wiki:"Marceline_the_Vampire_Queen",wh:0.72, eye:0.16, open:0.40, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"long mysterious cool vampire" },
+  { name:"Ice King",      show:"Adventure Time",  initial:"I", color:"#7dc6e0", wiki:"Ice_King",                   wh:0.65, eye:0.10, open:0.28, jaw:0.60, nose:0.28, mouth:0.22, brow_h:0.50, eye_gap:0.18, tag:"long pointy nose lonely" },
+  { name:"BMO",           show:"Adventure Time",  initial:"B", color:"#7ec98a", wiki:"BMO_(Adventure_Time)",       wh:1.20, eye:0.20, open:0.60, jaw:1.10, nose:0.00, mouth:0.30, brow_h:0.45, eye_gap:0.30, tag:"square boxy little buddy" },
+  { name:"Steven",        show:"Steven Universe", initial:"S", color:"#ff5d5d", wiki:"Steven_Universe_(character)",wh:1.05, eye:0.20, open:0.55, jaw:0.65, nose:0.05, mouth:0.22, brow_h:0.42, eye_gap:0.22, tag:"round chubby-cheeked wholesome" },
+  { name:"Garnet",        show:"Steven Universe", initial:"G", color:"#5b2a86", wiki:"Garnet_(Steven_Universe)",   wh:0.85, eye:0.10, open:0.20, jaw:0.92, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.28, tag:"square stoic strong leader" },
+  { name:"Pearl",         show:"Steven Universe", initial:"P", color:"#f0d8c6", wiki:"Pearl_(Steven_Universe)",    wh:0.65, eye:0.16, open:0.45, jaw:0.55, nose:0.18, mouth:0.16, brow_h:0.36, eye_gap:0.20, tag:"long pointed elegant precise" },
+  { name:"Amethyst",      show:"Steven Universe", initial:"A", color:"#a164d6", wiki:"Amethyst_(Steven_Universe)", wh:1.05, eye:0.18, open:0.45, jaw:0.85, nose:0.06, mouth:0.26, brow_h:0.45, eye_gap:0.26, tag:"round mischievous laid-back" },
+  { name:"Connie",        show:"Steven Universe", initial:"C", color:"#d18a5a", wiki:"Connie_Maheswaran",          wh:0.85, eye:0.18, open:0.55, jaw:0.62, nose:0.05, mouth:0.20, brow_h:0.40, eye_gap:0.24, tag:"oval thoughtful sharp" },
+  { name:"Mac",           show:"Foster's Home",   initial:"M", color:"#5f9bd5", wiki:"Foster%27s_Home_for_Imaginary_Friends", wh:1.00, eye:0.20, open:0.55, jaw:0.60, nose:0.04, mouth:0.20, brow_h:0.40, eye_gap:0.22, tag:"round big-eyed earnest kid" },
+  { name:"Bloo",          show:"Foster's Home",   initial:"B", color:"#7ec0ee", wiki:"Bloo_(Foster%27s_Home_for_Imaginary_Friends)", wh:0.85, eye:0.22, open:0.65, jaw:0.55, nose:0.00, mouth:0.18, brow_h:0.32, eye_gap:0.20, tag:"oval blob huge-eyed mischief" },
+  { name:"Eduardo",       show:"Foster's Home",   initial:"E", color:"#9d5ec4", wh:1.05, eye:0.16, open:0.45, jaw:0.95, nose:0.08, mouth:0.32, brow_h:0.50, eye_gap:0.28, tag:"big-jawed gentle softie" },
+  { name:"Wilt",          show:"Foster's Home",   initial:"W", color:"#e85e5e", wh:0.55, eye:0.16, open:0.50, jaw:0.55, nose:0.05, mouth:0.24, brow_h:0.32, eye_gap:0.18, tag:"super tall thin polite" },
+  { name:"Coco",          show:"Foster's Home",   initial:"C", color:"#f7d04a", wh:0.70, eye:0.18, open:0.45, jaw:0.60, nose:0.30, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"long beaky chaotic" },
+  { name:"Gumball",       show:"World of Gumball", initial:"G", color:"#5dc1f0", wiki:"Gumball_Watterson",         wh:1.00, eye:0.22, open:0.55, jaw:0.65, nose:0.04, mouth:0.22, brow_h:0.40, eye_gap:0.24, tag:"round blue-cat optimistic" },
+  { name:"Darwin",        show:"World of Gumball", initial:"D", color:"#ff8b3d", wiki:"Darwin_Watterson",          wh:1.05, eye:0.24, open:0.60, jaw:0.70, nose:0.04, mouth:0.22, brow_h:0.38, eye_gap:0.26, tag:"round goldfish wide-eyed" },
+  { name:"Anais",         show:"World of Gumball", initial:"A", color:"#ffb6c8", wiki:"The_Amazing_World_of_Gumball", wh:1.05, eye:0.22, open:0.55, jaw:0.62, nose:0.03, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"round bunny smart small" },
+  { name:"Dexter",        show:"Dexter's Lab",    initial:"D", color:"#f7b955", wiki:"Dexter_(Dexter%27s_Laboratory)", wh:1.00, eye:0.14, open:0.30, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.45, eye_gap:0.20, tag:"glasses round genius small" },
+  { name:"Dee Dee",       show:"Dexter's Lab",    initial:"D", color:"#ffb6c8", wiki:"Dee_Dee_(Dexter%27s_Laboratory)", wh:0.85, eye:0.20, open:0.60, jaw:0.55, nose:0.04, mouth:0.22, brow_h:0.36, eye_gap:0.24, tag:"oval ditzy big-eyed dancer" },
+  { name:"Mandark",       show:"Dexter's Lab",    initial:"M", color:"#5b2a86", wiki:"Mandark",                    wh:0.62, eye:0.10, open:0.20, jaw:0.58, nose:0.20, mouth:0.20, brow_h:0.50, eye_gap:0.18, tag:"long sinister hair-helmet" },
+  { name:"Mordecai",      show:"Regular Show",    initial:"M", color:"#5b9bd5", wiki:"List_of_Regular_Show_characters", wh:0.65, eye:0.14, open:0.35, jaw:0.62, nose:0.20, mouth:0.18, brow_h:0.42, eye_gap:0.22, tag:"long blue jay slacker" },
+  { name:"Rigby",         show:"Regular Show",    initial:"R", color:"#a07a4a", wiki:"List_of_Regular_Show_characters", wh:0.85, eye:0.14, open:0.40, jaw:0.65, nose:0.10, mouth:0.22, brow_h:0.48, eye_gap:0.20, tag:"oval scruffy raccoon" },
+  { name:"Johnny Bravo",  show:"Johnny Bravo",    initial:"J", color:"#f7d04a", wiki:"Johnny_Bravo_(character)",   wh:0.95, eye:0.10, open:0.20, jaw:1.10, nose:0.10, mouth:0.30, brow_h:0.55, eye_gap:0.24, tag:"chiseled massive-jawed cocky" },
+  { name:"Courage",       show:"Courage Cowardly Dog", initial:"C", color:"#e85e9b", wiki:"Courage_the_Cowardly_Dog", wh:1.10, eye:0.22, open:0.55, jaw:0.55, nose:0.08, mouth:0.18, brow_h:0.42, eye_gap:0.18, tag:"round terrified pink dog" },
+  { name:"Ed",            show:"Ed Edd n Eddy",   initial:"E", color:"#7ed957", wiki:"Ed,_Edd_n_Eddy",             wh:0.95, eye:0.12, open:0.20, jaw:0.95, nose:0.08, mouth:0.45, brow_h:0.55, eye_gap:0.22, tag:"square dim wide-grinned" },
+  { name:"Edd (Double D)",show:"Ed Edd n Eddy",   initial:"D", color:"#7ec0ee", wiki:"Ed,_Edd_n_Eddy",             wh:0.85, eye:0.13, open:0.30, jaw:0.62, nose:0.06, mouth:0.18, brow_h:0.40, eye_gap:0.20, tag:"oval polite gap-toothed smart" },
+  { name:"Eddy",          show:"Ed Edd n Eddy",   initial:"E", color:"#f7b955", wiki:"Ed,_Edd_n_Eddy",             wh:1.05, eye:0.13, open:0.35, jaw:0.85, nose:0.06, mouth:0.30, brow_h:0.48, eye_gap:0.24, tag:"round scheming greedy short" },
+  { name:"Samurai Jack",  show:"Samurai Jack",    initial:"J", color:"#1a1a1a", wiki:"Samurai_Jack_(character)",               wh:0.78, eye:0.10, open:0.25, jaw:0.85, nose:0.18, mouth:0.20, brow_h:0.46, eye_gap:0.22, tag:"chiseled stoic samurai" },
+  { name:"Ben Tennyson",  show:"Ben 10",          initial:"B", color:"#7ed957", wiki:"Ben_Tennyson",               wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.06, mouth:0.24, brow_h:0.42, eye_gap:0.24, tag:"average-faced cheeky teen hero" },
+  { name:"Numbuh 1",      show:"Kids Next Door",  initial:"1", color:"#e85e5e", wiki:"Codename:_Kids_Next_Door",   wh:0.95, eye:0.10, open:0.25, jaw:0.70, nose:0.06, mouth:0.18, brow_h:0.48, eye_gap:0.22, tag:"round bald sunglasses tactical" },
+  { name:"Numbuh 4",      show:"Kids Next Door",  initial:"4", color:"#f7d04a", wiki:"Codename:_Kids_Next_Door",   wh:0.92, eye:0.12, open:0.28, jaw:0.72, nose:0.06, mouth:0.22, brow_h:0.50, eye_gap:0.24, tag:"oval scrappy blonde tough" },
 ];
 
 // ─── Augment datasets with derived/default features ──────────────────────────
@@ -880,17 +874,33 @@ function renderRunnerAvatar(idx, p, pct) {
   $(`runner${idx}Pct`).textContent = `${pct}%`;
 }
 
-// Avatar populater — tries image first, falls back to initial+gradient on error
-function populateAvatar(av, p, isRunner) {
-  // Reset
+// Wikipedia image cache — avoid re-fetching the same article during a session
+const wikiImageCache = new Map();
+async function fetchWikiImage(slug) {
+  if (!slug) return null;
+  if (wikiImageCache.has(slug)) return wikiImageCache.get(slug);
+  try {
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${slug}`);
+    if (!res.ok) { wikiImageCache.set(slug, null); return null; }
+    const data = await res.json();
+    const url = data.thumbnail?.source || data.originalimage?.source || null;
+    wikiImageCache.set(slug, url);
+    return url;
+  } catch { wikiImageCache.set(slug, null); return null; }
+}
+
+// Avatar populater — shows gradient+initial immediately, then swaps in
+// the Wikipedia image when it loads. Falls back to gradient on any failure.
+async function populateAvatar(av, p, isRunner) {
   av.classList.remove("has-image");
   av.innerHTML = "";
   av.style.background = `linear-gradient(135deg, ${p.color} 0%, ${darken(p.color, 0.3)} 100%)`;
-  if (!p.img) {
-    av.textContent = p.initial;
-    return;
-  }
-  // Try to load the character image
+  av.textContent = p.initial;
+  if (!p.wiki) return;
+
+  const url = await fetchWikiImage(p.wiki);
+  if (!url) return;
+
   const img = new Image();
   img.referrerPolicy = "no-referrer";
   img.alt = p.name;
@@ -899,13 +909,8 @@ function populateAvatar(av, p, isRunner) {
     av.appendChild(img);
     av.classList.add("has-image");
   };
-  img.onerror = () => {
-    // Fall back to gradient + initial
-    av.textContent = p.initial;
-  };
-  img.src = p.img;
-  // Show initial as immediate placeholder while loading
-  av.textContent = p.initial;
+  img.onerror = () => { /* keep gradient+initial */ };
+  img.src = url;
 }
 function darken(hex, amount) {
   const c = hex.replace("#",""); const num = parseInt(c, 16);
