@@ -662,10 +662,11 @@ function dominantColor(img) {
   return [Math.round(sums[bi][0]/sums[bi][3]),Math.round(sums[bi][1]/sums[bi][3]),Math.round(sums[bi][2]/sums[bi][3])];
 }
 
-// Convert raw z-score distance to 0–100% match score.
-// Z-score distances are typically larger; tune so a "good" match is ~75-90%.
+// Convert combined z-score distance to 0–100% match score.
+// Combined dist is in std-dev units (negative = better than population average).
+// Sigmoid maps z=-2 → ~92%, z=0 → 50%, z=+2 → ~8% — natural-feeling spread.
 function distToPercent(d) {
-  return Math.max(0, Math.min(100, Math.round(100 * Math.exp(-d * 0.45))));
+  return Math.max(2, Math.min(99, Math.round(100 / (1 + Math.exp(d * 1.2)))));
 }
 
 // ─── Mode state ──────────────────────────────────────────────────────────────
@@ -692,6 +693,10 @@ document.querySelectorAll(".mode-btn").forEach(btn => {
 });
 
 // ─── Analyze ─────────────────────────────────────────────────────────────────
+// Pokémon scoring blends structural similarity (face shape) with color similarity
+// (skin/clothing palette vs Pokémon body color). Both distances are z-score
+// normalized against the dataset's distribution so they're on the same scale,
+// then blended 70/30 (structure/color) — both meaningfully contribute.
 async function analyze(img) {
   let features = null;
   if (landmarker) {
@@ -707,22 +712,41 @@ async function analyze(img) {
   const stats   = mode === "pokemon" ? POKEMON_STATS : CN_STATS;
   const color = dominantColor(img);
   let scored;
+
   if (features) {
-    scored = dataset.map(p => {
+    // First pass: compute raw structural and color distances for every entry
+    const raw = dataset.map(p => {
       const sd = zStructuralDistance(features, p, stats);
-      // Only blend color in for Pokémon (CN avatars are arbitrary brand colors)
-      let dist = sd;
-      if (mode === "pokemon" && p.rgb) {
-        const cd = colorDistance(color, p.rgb);
-        dist = sd * 0.85 + cd * 0.15;
-      }
-      return { p, dist };
+      const cd = (mode === "pokemon" && p.rgb) ? colorDistance(color, p.rgb) : null;
+      return { p, sd, cd };
+    });
+    // Z-normalize color distances within this scoring pass so structure & color
+    // sit on the same axis. Without this, a tiny color spread can let one feature
+    // dominate; with it, color contributes a true 30%.
+    const cds = raw.map(r => r.cd).filter(v => v !== null);
+    const cMean = cds.length ? cds.reduce((s,v)=>s+v,0)/cds.length : 0;
+    const cStd  = cds.length ? Math.sqrt(cds.reduce((s,v)=>s+(v-cMean)**2,0)/cds.length) || 1 : 1;
+    const sds = raw.map(r => r.sd);
+    const sMean = sds.reduce((s,v)=>s+v,0)/sds.length;
+    const sStd  = Math.sqrt(sds.reduce((s,v)=>s+(v-sMean)**2,0)/sds.length) || 1;
+
+    scored = raw.map(r => {
+      const sZ = (r.sd - sMean) / sStd;
+      const cZ = r.cd !== null ? (r.cd - cMean) / cStd : null;
+      // Combined score: 70% structural, 30% color. CN mode (no rgb) → 100% structural.
+      const dist = cZ !== null ? sZ * 0.70 + cZ * 0.30 : sZ;
+      // Per-component % for the result breakdown
+      const structPct = Math.max(0, Math.min(100, Math.round(100 * Math.exp(-Math.max(0, r.sd) * 0.45))));
+      const colorPct  = r.cd !== null ? Math.max(0, Math.min(100, Math.round(100 * Math.exp(-r.cd * 0.7)))) : null;
+      return { p: r.p, dist, sd: r.sd, cd: r.cd, structPct, colorPct };
     }).sort((a,b)=>a.dist-b.dist);
   } else {
-    // No face detected: in pokemon mode use color, in CN mode pick random-ish via name
+    // No face detected: pokemon → color only, CN → random
     scored = dataset.map(p => ({
       p,
-      dist: mode === "pokemon" && p.rgb ? colorDistance(color, p.rgb) : Math.random()
+      dist: mode === "pokemon" && p.rgb ? colorDistance(color, p.rgb) : Math.random(),
+      structPct: null,
+      colorPct: null,
     })).sort((a,b)=>a.dist-b.dist);
   }
   await showResult(scored, color, features);
@@ -763,8 +787,11 @@ async function showResult(scored, rgb, features) {
       $("pokeName").textContent = winnerName;
       $("matchPct").innerHTML = `${pct1}<span>%</span>`;
       $("pokeTypes").innerHTML = types.map(t=>`<span class="type-chip" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`).join("");
+      const breakdown = (features && first.structPct !== null && first.colorPct !== null)
+        ? ` <span style="display:inline-block;margin-top:6px;font-size:12px;color:var(--muted)">Structure ${first.structPct}% · Color ${first.colorPct}%</span>`
+        : "";
       $("reason").innerHTML = features
-        ? `Your face reads as <strong>${first.p.tag}</strong>.`
+        ? `Your face reads as <strong>${first.p.tag}</strong>.<br>${breakdown}`
         : `No face detected — matched on color vibe instead.`;
       const [d2, d3] = await Promise.all([
         fetch(`https://pokeapi.co/api/v2/pokemon/${second.p.id}`).then(r=>r.json()),
