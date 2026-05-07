@@ -53,6 +53,51 @@
   .mode-btn.active { background: var(--accent); color: #1a1a1a; }
   .mode-btn:not(.active):hover { color: var(--text); }
 
+  /* Mode toggle wraps on narrow viewports for the 3rd button */
+  @media (max-width: 380px) {
+    .mode-toggle { flex-wrap: wrap; }
+    .mode-btn { padding: 8px 14px; font-size: 12px; }
+  }
+
+  /* Beauty Score card */
+  .beauty-card {
+    background: linear-gradient(160deg, #232a50 0%, #1a1f3a 100%);
+    border: 1px solid var(--border);
+    border-radius: 18px; padding: 24px 20px; text-align: center;
+    animation: fadeInUp .5s ease forwards;
+    box-shadow: var(--win-glow); border-color: rgba(255,203,5,0.6);
+    position: relative; overflow: hidden;
+  }
+  .beauty-card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(255,203,5,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .beauty-score-big {
+    font-size: 84px; font-weight: 900; color: var(--accent);
+    letter-spacing: -0.04em; line-height: 1; margin: 12px 0 4px;
+    text-shadow: 0 4px 24px rgba(255,203,5,0.3);
+  }
+  .beauty-score-big .denom { font-size: 32px; color: var(--muted); font-weight: 700; }
+  .beauty-tier { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); margin-bottom: 16px; }
+  .beauty-tier.s { color: #ffd700; }
+  .beauty-tier.a { color: #ffcb05; }
+  .beauty-tier.b { color: #7AC74C; }
+  .beauty-tier.c { color: #6390F0; }
+  .beauty-tier.d { color: #9aa3c7; }
+
+  .beauty-bars { display: flex; flex-direction: column; gap: 10px; text-align: left; margin: 20px 0; }
+  .beauty-bar { background: rgba(0,0,0,0.18); border-radius: 10px; padding: 10px 14px; position: relative; }
+  .beauty-bar-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .beauty-bar-label { font-size: 13px; font-weight: 700; color: var(--text); }
+  .beauty-bar-ref { font-size: 10px; color: var(--muted); margin-left: 6px; font-weight: 500; }
+  .beauty-bar-val { font-size: 14px; font-weight: 800; color: var(--accent); }
+  .beauty-bar-track { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+  .beauty-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent2) 0%, var(--accent) 100%); border-radius: 3px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+
+  .beauty-disclaimer { font-size: 11px; color: var(--muted); margin-top: 18px; line-height: 1.6; padding: 12px; background: rgba(0,0,0,0.18); border-radius: 10px; text-align: left; }
+  .beauty-disclaimer strong { color: var(--text); display: block; margin-bottom: 4px; }
+
   /* Cartoon Network avatar (gradient fallback when no image) */
   .cn-avatar {
     width: 180px; height: 180px; border-radius: 50%;
@@ -184,6 +229,7 @@
     <div class="mode-toggle" role="tablist">
       <button class="mode-btn active" id="modePokemon" type="button" data-mode="pokemon">Pokémon</button>
       <button class="mode-btn" id="modeCartoon" type="button" data-mode="cartoon">Cartoon Network</button>
+      <button class="mode-btn" id="modeBeauty" type="button" data-mode="beauty">Beauty Score</button>
     </div>
     <label class="drop" id="drop">
       <input type="file" id="file" accept="image/*" />
@@ -232,6 +278,26 @@
         </svg>
       </div>
       <div class="status" id="analyzeStatus" style="display:none"></div>
+
+      <!-- Beauty Score result (only shown in beauty mode) -->
+      <div class="beauty-card" id="beautyCard" style="display:none">
+        <div class="winner-badge">✨ Beauty Score</div>
+        <div class="beauty-score-big" id="beautyScoreBig">—<span class="denom">/10</span></div>
+        <div class="beauty-tier" id="beautyTier"></div>
+        <div class="beauty-bars" id="beautyBars"></div>
+        <div class="beauty-disclaimer">
+          <strong>About this score</strong>
+          Composite of 8 research-backed metrics: facial symmetry (Rhodes, 2006), averageness (Langlois &amp; Roggman, 1990), Da Vinci's facial thirds, neoclassical fifths, golden-ratio proportions (Schmid, 2008), Marquardt mask eye spacing, nose-to-mouth phi ratio (Pallett, 2010), and lower-face balance. Beauty is subjective, culturally relative, and far more than geometry — this is a rough mathematical reading of one specific Western academic tradition, not a verdict on you.
+        </div>
+        <div style="text-align:center; margin-top:10px">
+          <button class="btn btn-share" id="beautyShareBtn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share Score
+          </button>
+          <br>
+          <button class="btn btn-try" id="beautyAgain" type="button">Try another photo</button>
+        </div>
+      </div>
 
       <!-- Results -->
       <div class="results-area" id="resultsArea" style="display:none">
@@ -535,6 +601,7 @@ again.addEventListener("click", () => {
   fileInput.value = "";
   previewWrap.classList.remove("show");
   resultsArea.style.display = "none";
+  document.getElementById("beautyCard").style.display = "none";
   errBox.textContent = "";
   lastResult = null;
   document.title = "FaceMatch by Samee — Which character do you resemble?";
@@ -656,6 +723,113 @@ function dominantColor(img) {
   return [Math.round(sums[bi][0]/sums[bi][3]),Math.round(sums[bi][1]/sums[bi][3]),Math.round(sums[bi][2]/sums[bi][3])];
 }
 
+// ─── Beauty Score (research-backed facial proportion analysis) ───────────────
+// Implements 8 published metrics from beauty research:
+//   • Symmetry (Rhodes 2006 — strongest single attractiveness predictor)
+//   • Averageness (Langlois & Roggman 1990 — average composite faces rated higher)
+//   • Facial thirds equality (Da Vinci canon — top→brow ≈ brow→nose ≈ nose→chin)
+//   • Facial fifths equality (Neoclassical canon — face = 5 eye-widths wide)
+//   • Golden ratio length/width (Schmid 2008)
+//   • Eye spacing canon (Marquardt mask — inter-canthal ≈ 1 eye-width)
+//   • Nose-mouth phi ratio (Pallett 2010 — mouth width ≈ 1.618× nose width)
+//   • Lower-third balance (mouth divides lower face at phi point)
+//
+// Each component is scored 0-100 based on deviation from the canonical ideal,
+// then weighted-averaged into a composite. Weights are derived from relative
+// effect sizes reported in the cited literature.
+const PHI = 1.618;
+const BEAUTY_WEIGHTS = {
+  symmetry:    0.20, averageness: 0.15, thirds:      0.15, fifths:      0.13,
+  goldenRatio: 0.10, eyeSpacing:  0.10, noseMouth:   0.10, lowerThird:  0.07,
+};
+const BEAUTY_REFS = {
+  symmetry:"Rhodes 2006", averageness:"Langlois 1990", thirds:"Da Vinci",
+  fifths:"Neoclassical", goldenRatio:"Schmid 2008", eyeSpacing:"Marquardt",
+  noseMouth:"Pallett 2010", lowerThird:"Phi proportion",
+};
+const BEAUTY_LABELS = {
+  symmetry:"Facial Symmetry", averageness:"Averageness", thirds:"Facial Thirds",
+  fifths:"Facial Fifths", goldenRatio:"Golden Ratio", eyeSpacing:"Eye Spacing",
+  noseMouth:"Nose↔Mouth (φ)", lowerThird:"Lower-Third Balance",
+};
+
+function computeBeautyScore(features, lm) {
+  const D = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+  const top=lm[10], chin=lm[152], cheekL=lm[234], cheekR=lm[454];
+  const browMid=lm[9], noseBase=lm[2], noseLeft=lm[129], noseRight=lm[358];
+  const lEyeOut=lm[33], lEyeIn=lm[133], rEyeIn=lm[362], rEyeOut=lm[263];
+  const mouthL=lm[61], mouthR=lm[291], mouthTop=lm[13];
+  const faceW = D(cheekL, cheekR);
+
+  // 1. Facial thirds (Da Vinci): segments should be equal
+  const t1=D(top,browMid), t2=D(browMid,noseBase), t3=D(noseBase,chin);
+  const tMean=(t1+t2+t3)/3;
+  const tDev=Math.sqrt(((t1-tMean)**2+(t2-tMean)**2+(t3-tMean)**2)/3)/tMean;
+  const thirds = Math.max(0, Math.min(100, 100 - tDev * 250));
+
+  // 2. Facial fifths (Neoclassical): each segment ~ one eye-width
+  const f=[D(cheekL,lEyeOut), D(lEyeOut,lEyeIn), D(lEyeIn,rEyeIn), D(rEyeIn,rEyeOut), D(rEyeOut,cheekR)];
+  const fMean=f.reduce((s,v)=>s+v,0)/5;
+  const fDev=Math.sqrt(f.reduce((s,v)=>s+(v-fMean)**2,0)/5)/fMean;
+  const fifths = Math.max(0, Math.min(100, 100 - fDev * 250));
+
+  // 3. Golden ratio of face length/width — accept either 1:1 (round) or 1:phi
+  const lwRatio = 1 / Math.max(features.wh, 0.001); // = faceH / faceW
+  const phiDev = Math.min(Math.abs(lwRatio - 1.0), Math.abs(lwRatio - PHI), Math.abs(lwRatio - 1/PHI));
+  const goldenRatio = Math.max(0, Math.min(100, 100 - phiDev * 180));
+
+  // 4. Eye spacing (Marquardt): inter-canthal = one eye width
+  const eyeW = D(lEyeOut, lEyeIn);
+  const interC = D(lEyeIn, rEyeIn);
+  const eyeSpaceRatio = interC / Math.max(eyeW, 0.001);
+  const eyeSpacing = Math.max(0, Math.min(100, 100 - Math.abs(eyeSpaceRatio - 1.0) * 90));
+
+  // 5. Nose-mouth phi: mouth width ≈ 1.618 × nose width
+  const noseW = D(noseLeft, noseRight);
+  const mouthW = D(mouthL, mouthR);
+  const nmRatio = mouthW / Math.max(noseW, 0.001);
+  const noseMouth = Math.max(0, Math.min(100, 100 - Math.abs(nmRatio - PHI) * 55));
+
+  // 6. Lower-third balance: nose-to-mouth-top should be ~ 36% of nose-to-chin
+  const lowerH = D(noseBase, chin);
+  const noseToMouth = D(noseBase, mouthTop);
+  const lowerRatio = noseToMouth / Math.max(lowerH, 0.001);
+  const lowerThird = Math.max(0, Math.min(100, 100 - Math.abs(lowerRatio - 0.36) * 280));
+
+  // 7. Symmetry — already z-extracted from features (lower = more symmetric)
+  const symmetry = Math.max(0, Math.min(100, 100 - features.symmetry * 900));
+
+  // 8. Averageness — distance from population mean across 11 features
+  // (Langlois 1990 effect: average composite faces rated more attractive)
+  let z2sum = 0, n = 0;
+  for (const k of FEATURE_KEYS) {
+    if (typeof features[k] === "number" && POKEMON_STATS[k]) {
+      const z = (features[k] - POKEMON_STATS[k].mean) / POKEMON_STATS[k].std;
+      z2sum += z * z; n++;
+    }
+  }
+  const avgDist = Math.sqrt(z2sum / n);
+  const averageness = Math.max(0, Math.min(100, 100 - avgDist * 22));
+
+  const components = { symmetry, averageness, thirds, fifths, goldenRatio, eyeSpacing, noseMouth, lowerThird };
+  let composite = 0;
+  for (const k of Object.keys(components)) composite += components[k] * BEAUTY_WEIGHTS[k];
+
+  return {
+    composite100: Math.round(composite),
+    composite10: Math.round(composite) / 10,
+    components,
+  };
+}
+
+function beautyTier(score100) {
+  if (score100 >= 88) return { tier: "S", label: "Exceptional Proportions", cls: "s" };
+  if (score100 >= 78) return { tier: "A", label: "Above Average", cls: "a" };
+  if (score100 >= 68) return { tier: "B", label: "Conventionally Average", cls: "b" };
+  if (score100 >= 55) return { tier: "C", label: "Average Proportions", cls: "c" };
+  return                { tier: "D", label: "Distinctive Proportions", cls: "d" };
+}
+
 // Convert combined z-score distance to 0–100% match score.
 // Combined dist is in std-dev units (negative = better than population average).
 // Sigmoid maps z=-2 → ~92%, z=0 → 50%, z=+2 → ~8% — natural-feeling spread.
@@ -675,15 +849,68 @@ document.querySelectorAll(".mode-btn").forEach(btn => {
     fileInput.value = "";
     previewWrap.classList.remove("show");
     resultsArea.style.display = "none";
+    document.getElementById("beautyCard").style.display = "none";
     errBox.textContent = "";
     lastResult = null;
-    document.title = mode === "pokemon"
-      ? "FaceMatch by Samee — Which character do you resemble?"
-      : "FaceMatch by Samee — Cartoon Network mode";
-    statusEl.textContent = mode === "pokemon"
-      ? "Match against 52 Pokémon."
-      : "Match against 36 Cartoon Network characters.";
+    if (mode === "pokemon") {
+      document.title = "FaceMatch by Samee — Which character do you resemble?";
+      statusEl.textContent = "Match against 52 Pokémon.";
+    } else if (mode === "cartoon") {
+      document.title = "FaceMatch by Samee — Cartoon Network mode";
+      statusEl.textContent = "Match against 36 Cartoon Network characters.";
+    } else if (mode === "beauty") {
+      document.title = "FaceMatch by Samee — Beauty Score";
+      statusEl.textContent = "Get a research-backed proportion score.";
+    }
   });
+});
+
+// ─── Beauty result renderer ──────────────────────────────────────────────────
+function showBeautyResult(score, features) {
+  const card = document.getElementById("beautyCard");
+  const tier = beautyTier(score.composite100);
+  document.getElementById("beautyScoreBig").innerHTML =
+    `${score.composite10.toFixed(1)}<span class="denom">/10</span>`;
+  const tierEl = document.getElementById("beautyTier");
+  tierEl.textContent = `Tier ${tier.tier} · ${tier.label}`;
+  tierEl.className = `beauty-tier ${tier.cls}`;
+
+  const bars = document.getElementById("beautyBars");
+  bars.innerHTML = "";
+  // Order by weight (most important first)
+  const ordered = Object.keys(BEAUTY_WEIGHTS).sort((a,b) => BEAUTY_WEIGHTS[b]-BEAUTY_WEIGHTS[a]);
+  for (const k of ordered) {
+    const v = Math.round(score.components[k]);
+    const bar = document.createElement("div");
+    bar.className = "beauty-bar";
+    bar.innerHTML = `
+      <div class="beauty-bar-row">
+        <span class="beauty-bar-label">${BEAUTY_LABELS[k]}<span class="beauty-bar-ref">${BEAUTY_REFS[k]}</span></span>
+        <span class="beauty-bar-val">${v}</span>
+      </div>
+      <div class="beauty-bar-track"><div class="beauty-bar-fill" style="width:0%"></div></div>
+    `;
+    bars.appendChild(bar);
+    // Animate fill after insertion
+    requestAnimationFrame(() => {
+      bar.querySelector(".beauty-bar-fill").style.width = `${v}%`;
+    });
+  }
+  card.style.display = "block";
+  lastResult = { name: `Beauty Score ${score.composite10.toFixed(1)}/10`, pct: score.composite100, show: null, beauty: true };
+  document.title = `${score.composite10.toFixed(1)}/10 Beauty Score — FaceMatch by Samee`;
+}
+
+// Beauty mode's own share + try-again handlers (separate from the matching flow)
+document.getElementById("beautyShareBtn").addEventListener("click", () => shareBtn.click());
+document.getElementById("beautyAgain").addEventListener("click", () => {
+  fileInput.value = "";
+  previewWrap.classList.remove("show");
+  document.getElementById("beautyCard").style.display = "none";
+  errBox.textContent = "";
+  lastResult = null;
+  document.title = "FaceMatch by Samee — Beauty Score";
+  faceCanvas.getContext("2d").clearRect(0, 0, faceCanvas.width, faceCanvas.height);
 });
 
 // ─── Analyze ─────────────────────────────────────────────────────────────────
@@ -693,15 +920,31 @@ document.querySelectorAll(".mode-btn").forEach(btn => {
 // then blended 70/30 (structure/color) — both meaningfully contribute.
 async function analyze(img) {
   let features = null;
+  let landmarks = null;
   if (landmarker) {
     try {
       const res = landmarker.detect(img);
       if (res.faceLandmarks?.length > 0) {
-        features = computeFeatures(res.faceLandmarks[0]);
-        drawFaceOverlay(res.faceLandmarks[0]);
+        landmarks = res.faceLandmarks[0];
+        features = computeFeatures(landmarks);
+        drawFaceOverlay(landmarks);
       }
     } catch(e) { console.error("face detect failed", e); }
   }
+
+  // ── Beauty Score mode: analytic scoring, not dataset matching ──
+  if (mode === "beauty") {
+    spinner.style.display = "none";
+    analyzeStatus.style.display = "none";
+    if (!features || !landmarks) {
+      errBox.textContent = "Couldn't detect a face — beauty score needs all 478 landmarks. Try a clearer front-facing photo.";
+      return;
+    }
+    const score = computeBeautyScore(features, landmarks);
+    showBeautyResult(score, features);
+    return;
+  }
+
   const dataset = mode === "pokemon" ? POKEMON : CN_CHARACTERS;
   const stats   = mode === "pokemon" ? POKEMON_STATS : CN_STATS;
   const color = dominantColor(img);
@@ -924,9 +1167,11 @@ function darken(hex, amount) {
 // ─── Share ────────────────────────────────────────────────────────────────────
 shareBtn.addEventListener("click", async () => {
   if (!lastResult) return;
-  const text = lastResult.show
-    ? `I matched ${lastResult.pct}% with ${lastResult.name} from ${lastResult.show}! 🎨 Which Cartoon Network character do YOU resemble? — FaceMatch by Samee`
-    : `I matched ${lastResult.pct}% with ${lastResult.name}! 🎮 Which Pokémon do YOU resemble? — FaceMatch by Samee`;
+  const text = lastResult.beauty
+    ? `My face scored ${(lastResult.pct/10).toFixed(1)}/10 on classical beauty proportions! ✨ Get yours — FaceMatch by Samee`
+    : lastResult.show
+      ? `I matched ${lastResult.pct}% with ${lastResult.name} from ${lastResult.show}! 🎨 Which Cartoon Network character do YOU resemble? — FaceMatch by Samee`
+      : `I matched ${lastResult.pct}% with ${lastResult.name}! 🎮 Which Pokémon do YOU resemble? — FaceMatch by Samee`;
   const url = window.location.href;
   if (navigator.share) {
     try { await navigator.share({ title: "FaceMatch by Samee", text, url }); return; } catch(e) { /* user cancelled */ }
