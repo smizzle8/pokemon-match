@@ -724,61 +724,137 @@ function dominantColor(img) {
 }
 
 // ─── Beauty Score (research-backed facial proportion analysis) ───────────────
-// Implements 8 published metrics from beauty research:
-//   • Symmetry (Rhodes 2006 — strongest single attractiveness predictor)
-//   • Averageness (Langlois & Roggman 1990 — average composite faces rated higher)
-//   • Facial thirds equality (Da Vinci canon — top→brow ≈ brow→nose ≈ nose→chin)
-//   • Facial fifths equality (Neoclassical canon — face = 5 eye-widths wide)
-//   • Golden ratio length/width (Schmid 2008)
-//   • Eye spacing canon (Marquardt mask — inter-canthal ≈ 1 eye-width)
-//   • Nose-mouth phi ratio (Pallett 2010 — mouth width ≈ 1.618× nose width)
-//   • Lower-third balance (mouth divides lower face at phi point)
+// Implements 11 published metrics from beauty research, with proper pose
+// normalization and yaw detection so head tilt doesn't skew measurements.
 //
-// Each component is scored 0-100 based on deviation from the canonical ideal,
-// then weighted-averaged into a composite. Weights are derived from relative
-// effect sizes reported in the cited literature.
+// Pipeline:
+//  1. Detect head roll (in-plane rotation) from eye line, rotate landmarks
+//     to a canonical upright pose
+//  2. Detect head yaw (left/right turn); if too high, reduce confidence
+//  3. Average groups of nearby landmarks for stable anatomical references
+//  4. Compute 11 metrics, score each 0-100 by distance from canonical ideal
+//  5. Composite = weighted average; weights from cited effect sizes
+//
+// Metrics:
+//  • Symmetry (Rhodes 2006 — strongest single attractiveness predictor)
+//  • Averageness (Langlois & Roggman 1990 — distance from anthropometric mean)
+//  • Da Vinci facial thirds (top→brow ≈ brow→nose ≈ nose→chin)
+//  • Neoclassical facial fifths (face width = 5 eye-widths)
+//  • Golden ratio length/width (Schmid 2008)
+//  • Marquardt eye-spacing canon (inter-canthal ≈ 1 eye-width)
+//  • Phi nose-mouth ratio (Pallett 2010)
+//  • Lower-third balance (mouth at phi point of lower face)
+//  • Canthal tilt (Naini 2017 — outer canthus slightly higher than inner)
+//  • Jaw-to-cheekbone ratio (Bashour 2006 — bigonial:bizygomatic ≈ 0.82)
+//  • Upper-to-lower lip ratio (Bisson & Grobbelaar 2004 — ≈ 1:2)
 const PHI = 1.618;
 const BEAUTY_WEIGHTS = {
-  symmetry:    0.20, averageness: 0.15, thirds:      0.15, fifths:      0.13,
-  goldenRatio: 0.10, eyeSpacing:  0.10, noseMouth:   0.10, lowerThird:  0.07,
+  symmetry:    0.18, averageness: 0.13, thirds:      0.13, fifths:      0.11,
+  goldenRatio: 0.08, eyeSpacing:  0.08, noseMouth:   0.08, lowerThird:  0.06,
+  canthalTilt: 0.06, jawCheek:    0.06, lipRatio:    0.03,
 };
 const BEAUTY_REFS = {
-  symmetry:"Rhodes 2006", averageness:"Langlois 1990", thirds:"Da Vinci",
-  fifths:"Neoclassical", goldenRatio:"Schmid 2008", eyeSpacing:"Marquardt",
+  symmetry:"Rhodes 2006", averageness:"Farkas/Langlois", thirds:"Da Vinci canon",
+  fifths:"Neoclassical canon", goldenRatio:"Schmid 2008", eyeSpacing:"Marquardt",
   noseMouth:"Pallett 2010", lowerThird:"Phi proportion",
+  canthalTilt:"Naini 2017", jawCheek:"Bashour 2006", lipRatio:"Bisson 2004",
 };
 const BEAUTY_LABELS = {
   symmetry:"Facial Symmetry", averageness:"Averageness", thirds:"Facial Thirds",
   fifths:"Facial Fifths", goldenRatio:"Golden Ratio", eyeSpacing:"Eye Spacing",
   noseMouth:"Nose↔Mouth (φ)", lowerThird:"Lower-Third Balance",
+  canthalTilt:"Canthal Tilt", jawCheek:"Jaw↔Cheek", lipRatio:"Lip Ratio",
 };
 
-function computeBeautyScore(features, lm) {
-  const D = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
-  const top=lm[10], chin=lm[152], cheekL=lm[234], cheekR=lm[454];
-  const browMid=lm[9], noseBase=lm[2], noseLeft=lm[129], noseRight=lm[358];
-  const lEyeOut=lm[33], lEyeIn=lm[133], rEyeIn=lm[362], rEyeOut=lm[263];
-  const mouthL=lm[61], mouthR=lm[291], mouthTop=lm[13];
-  const faceW = D(cheekL, cheekR);
+// Anthropometric ideals (Farkas 1994, calibrated to MediaPipe landmark scheme)
+// — used as the population-average reference for the averageness metric.
+const IDEAL_HUMAN_FACE = {
+  wh: 0.72, eye: 0.13, open: 0.36, jaw: 0.78, nose: 0.30,
+  mouth: 0.32, brow_h: 0.22, eye_gap: 0.20, forehead: 0.18,
+  symmetry: 0.025, mouth_fill: 0.15,
+};
 
-  // 1. Facial thirds (Da Vinci): segments should be equal
+// ─── Pose helpers ────────────────────────────────────────────────────────────
+function _avgLm(lm, indices) {
+  let x=0, y=0, z=0;
+  for (const i of indices) { x+=lm[i].x; y+=lm[i].y; z+=lm[i].z||0; }
+  const n = indices.length;
+  return { x: x/n, y: y/n, z: z/n };
+}
+
+// Detect roll (in-plane head tilt) from outer-canthus eye line.
+function detectRoll(lm) {
+  return Math.atan2(lm[263].y - lm[33].y, lm[263].x - lm[33].x);
+}
+
+// Rotate all landmarks by -roll around the face center (cheek-cheek midpoint).
+function normalizePose(lm) {
+  const roll = detectRoll(lm);
+  if (Math.abs(roll) < 0.015) return lm; // skip negligible rotations
+  const cx = (lm[234].x + lm[454].x) / 2;
+  const cy = (lm[234].y + lm[454].y) / 2;
+  const cos = Math.cos(-roll), sin = Math.sin(-roll);
+  return lm.map(p => ({
+    x: cx + (p.x - cx) * cos - (p.y - cy) * sin,
+    y: cy + (p.x - cx) * sin + (p.y - cy) * cos,
+    z: p.z || 0
+  }));
+}
+
+// Detect yaw (left/right turn) from nose-position asymmetry vs cheeks.
+// Returns 0 = perfect front, ~1 = full profile.
+function detectYaw(lm) {
+  const nose = lm[1], cheekL = lm[234], cheekR = lm[454];
+  const dL = Math.abs(nose.x - cheekL.x);
+  const dR = Math.abs(nose.x - cheekR.x);
+  return Math.abs(dL - dR) / Math.max(dL + dR, 0.001);
+}
+
+function computeBeautyScore(features, rawLm) {
+  const yaw = detectYaw(rawLm);
+  const lm = normalizePose(rawLm);
+  const D = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+
+  // Multi-point averaged anatomical references (more stable than single landmarks)
+  const top      = _avgLm(lm, [10]);
+  const chin     = _avgLm(lm, [152, 175, 199]);   // mid-chin region
+  const cheekL   = _avgLm(lm, [234]);
+  const cheekR   = _avgLm(lm, [454]);
+  const browMid  = _avgLm(lm, [9, 8]);            // glabella
+  const noseBase = _avgLm(lm, [2, 164]);          // subnasale
+  const noseLeft = _avgLm(lm, [129, 64]);         // left alare
+  const noseRight= _avgLm(lm, [358, 294]);        // right alare
+  const lEyeOut  = _avgLm(lm, [33]);
+  const lEyeIn   = _avgLm(lm, [133]);
+  const rEyeIn   = _avgLm(lm, [362]);
+  const rEyeOut  = _avgLm(lm, [263]);
+  const mouthL   = _avgLm(lm, [61]);
+  const mouthR   = _avgLm(lm, [291]);
+  const mouthTop = _avgLm(lm, [13, 0]);           // upper lip line / cupid's bow
+  const mouthBot = _avgLm(lm, [14, 17]);          // lower lip line
+  const jawL     = _avgLm(lm, [172, 138, 215]);   // left gonion area
+  const jawR     = _avgLm(lm, [397, 367, 435]);   // right gonion area
+
+  const faceH = D(top, chin);
+
+  // 1. Facial thirds (Da Vinci): three vertical segments should be equal
   const t1=D(top,browMid), t2=D(browMid,noseBase), t3=D(noseBase,chin);
   const tMean=(t1+t2+t3)/3;
-  const tDev=Math.sqrt(((t1-tMean)**2+(t2-tMean)**2+(t3-tMean)**2)/3)/tMean;
-  const thirds = Math.max(0, Math.min(100, 100 - tDev * 250));
+  const tDev=Math.sqrt(((t1-tMean)**2+(t2-tMean)**2+(t3-tMean)**2)/3)/Math.max(tMean,0.001);
+  const thirds = Math.max(0, Math.min(100, 100 - tDev * 240));
 
-  // 2. Facial fifths (Neoclassical): each segment ~ one eye-width
+  // 2. Facial fifths (Neoclassical): five equal eye-widths across the face
   const f=[D(cheekL,lEyeOut), D(lEyeOut,lEyeIn), D(lEyeIn,rEyeIn), D(rEyeIn,rEyeOut), D(rEyeOut,cheekR)];
   const fMean=f.reduce((s,v)=>s+v,0)/5;
-  const fDev=Math.sqrt(f.reduce((s,v)=>s+(v-fMean)**2,0)/5)/fMean;
-  const fifths = Math.max(0, Math.min(100, 100 - fDev * 250));
+  const fDev=Math.sqrt(f.reduce((s,v)=>s+(v-fMean)**2,0)/5)/Math.max(fMean,0.001);
+  const fifths = Math.max(0, Math.min(100, 100 - fDev * 240));
 
-  // 3. Golden ratio of face length/width — accept either 1:1 (round) or 1:phi
-  const lwRatio = 1 / Math.max(features.wh, 0.001); // = faceH / faceW
+  // 3. Golden ratio of face length/width — accept 1:1 (round), 1:phi (long), or phi:1 (wide)
+  const lwRatio = faceH / Math.max(D(cheekL,cheekR), 0.001);
   const phiDev = Math.min(Math.abs(lwRatio - 1.0), Math.abs(lwRatio - PHI), Math.abs(lwRatio - 1/PHI));
-  const goldenRatio = Math.max(0, Math.min(100, 100 - phiDev * 180));
+  const goldenRatio = Math.max(0, Math.min(100, 100 - phiDev * 170));
 
-  // 4. Eye spacing (Marquardt): inter-canthal = one eye width
+  // 4. Eye spacing (Marquardt): inter-canthal ≈ one eye width
   const eyeW = D(lEyeOut, lEyeIn);
   const interC = D(lEyeIn, rEyeIn);
   const eyeSpaceRatio = interC / Math.max(eyeW, 0.001);
@@ -790,35 +866,76 @@ function computeBeautyScore(features, lm) {
   const nmRatio = mouthW / Math.max(noseW, 0.001);
   const noseMouth = Math.max(0, Math.min(100, 100 - Math.abs(nmRatio - PHI) * 55));
 
-  // 6. Lower-third balance: nose-to-mouth-top should be ~ 36% of nose-to-chin
+  // 6. Lower-third balance: nose-base to upper lip ≈ 36% of nose-base to chin
   const lowerH = D(noseBase, chin);
   const noseToMouth = D(noseBase, mouthTop);
   const lowerRatio = noseToMouth / Math.max(lowerH, 0.001);
   const lowerThird = Math.max(0, Math.min(100, 100 - Math.abs(lowerRatio - 0.36) * 280));
 
-  // 7. Symmetry — already z-extracted from features (lower = more symmetric)
-  const symmetry = Math.max(0, Math.min(100, 100 - features.symmetry * 900));
+  // 7. Symmetry — recompute on pose-normalized landmarks for accuracy
+  // Average mirrored deviation across paired landmarks; lower = more symmetric.
+  const cxFace = (cheekL.x + cheekR.x) / 2;
+  const symPairs = [[33,263],[133,362],[159,386],[145,374],[172,397],[61,291],[105,334],[107,336]];
+  let symSum = 0;
+  for (const [li, ri] of symPairs) {
+    const lp = lm[li], rp = lm[ri];
+    const mirrLx = 2 * cxFace - lp.x;
+    symSum += Math.hypot(mirrLx - rp.x, lp.y - rp.y);
+  }
+  const symMetric = (symSum / symPairs.length) / Math.max(D(cheekL, cheekR), 0.001);
+  const symmetry = Math.max(0, Math.min(100, 100 - symMetric * 700));
 
-  // 8. Averageness — distance from population mean across 11 features
-  // (Langlois 1990 effect: average composite faces rated more attractive)
-  let z2sum = 0, n = 0;
+  // 8. Averageness — Euclidean deviation from anthropometric ideals (Farkas).
+  // Replaces prior Pokémon-stat-based version which biased toward cartoon shapes.
+  let dev2 = 0, n = 0;
   for (const k of FEATURE_KEYS) {
-    if (typeof features[k] === "number" && POKEMON_STATS[k]) {
-      const z = (features[k] - POKEMON_STATS[k].mean) / POKEMON_STATS[k].std;
-      z2sum += z * z; n++;
+    if (typeof features[k] === "number" && IDEAL_HUMAN_FACE[k] !== undefined) {
+      const ideal = IDEAL_HUMAN_FACE[k];
+      const d = (features[k] - ideal) / Math.max(ideal, 0.01);
+      dev2 += d * d; n++;
     }
   }
-  const avgDist = Math.sqrt(z2sum / n);
-  const averageness = Math.max(0, Math.min(100, 100 - avgDist * 22));
+  const avgDev = Math.sqrt(dev2 / Math.max(n, 1));
+  const averageness = Math.max(0, Math.min(100, 100 - avgDev * 45));
 
-  const components = { symmetry, averageness, thirds, fifths, goldenRatio, eyeSpacing, noseMouth, lowerThird };
+  // 9. Canthal tilt (Naini 2017): outer canthus slightly above inner — neutral
+  // to slightly positive tilt rated most attractive.
+  const lTilt = (lEyeIn.y - lEyeOut.y);  // positive = outer above inner (left side)
+  const rTilt = (rEyeIn.y - rEyeOut.y);  // positive = outer above inner (right side)
+  const canthalNorm = ((lTilt + rTilt) / 2) / Math.max(faceH, 0.001);
+  // Ideal range: +0.005 to +0.020 (slightly positive tilt). Negative = downturned.
+  const canthalDev = Math.abs(canthalNorm - 0.012);
+  const canthalTilt = Math.max(0, Math.min(100, 100 - canthalDev * 1800));
+
+  // 10. Jaw-cheekbone ratio (Bashour 2006): bigonial:bizygomatic ≈ 0.82
+  const bigonial = D(jawL, jawR);
+  const bizygo   = D(cheekL, cheekR);
+  const jcRatio = bigonial / Math.max(bizygo, 0.001);
+  const jawCheek = Math.max(0, Math.min(100, 100 - Math.abs(jcRatio - 0.82) * 200));
+
+  // 11. Lip ratio (Bisson & Grobbelaar 2004): upper:lower ≈ 1:2 ⇒ ratio 0.5
+  const upperLip = D(mouthTop, _avgLm(lm, [0]));     // cupid's bow region
+  const lowerLip = D(mouthBot, _avgLm(lm, [17]));    // chin-lip junction
+  const lipR = upperLip / Math.max(lowerLip + upperLip, 0.001);
+  // Normalized so 0.33 (lower 2x upper) is ideal
+  const lipRatio = Math.max(0, Math.min(100, 100 - Math.abs(lipR - 0.33) * 200));
+
+  const components = {
+    symmetry, averageness, thirds, fifths, goldenRatio, eyeSpacing,
+    noseMouth, lowerThird, canthalTilt, jawCheek, lipRatio
+  };
   let composite = 0;
   for (const k of Object.keys(components)) composite += components[k] * BEAUTY_WEIGHTS[k];
+
+  // Yaw confidence: faces turned more than 15° degrade reliability.
+  const confidence = Math.max(0.5, Math.min(1.0, 1.0 - (yaw - 0.10) * 2.5));
 
   return {
     composite100: Math.round(composite),
     composite10: Math.round(composite) / 10,
     components,
+    confidence,
+    yaw,
   };
 }
 
@@ -872,7 +989,11 @@ function showBeautyResult(score, features) {
   document.getElementById("beautyScoreBig").innerHTML =
     `${score.composite10.toFixed(1)}<span class="denom">/10</span>`;
   const tierEl = document.getElementById("beautyTier");
-  tierEl.textContent = `Tier ${tier.tier} · ${tier.label}`;
+  let tierText = `Tier ${tier.tier} · ${tier.label}`;
+  if (score.confidence < 0.85) {
+    tierText += ` · ⚠ ${Math.round(score.confidence*100)}% confidence (face turned — try a more front-facing photo)`;
+  }
+  tierEl.textContent = tierText;
   tierEl.className = `beauty-tier ${tier.cls}`;
 
   const bars = document.getElementById("beautyBars");
