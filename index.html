@@ -4,124 +4,314 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Which Pokémon Do You Resemble?</title>
+<meta name="description" content="Upload a face photo — we use AI to detect 478 facial landmarks and match your bone structure to the Pokémon you most resemble." />
+<meta property="og:title" content="Which Pokémon Do You Resemble?" />
+<meta property="og:description" content="AI face matching with 478 facial landmarks. Discover your Pokémon doppelgänger." />
+<meta property="og:image" content="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Which Pokémon Do You Resemble?" />
+<meta name="twitter:description" content="AI face matching with 478 facial landmarks. Discover your Pokémon doppelgänger." />
 <style>
   :root {
     --bg: #0f1226;
     --card: #1a1f3a;
+    --border: #2a2f55;
     --accent: #ffcb05;
     --accent2: #3d7dca;
     --red: #ee1515;
     --text: #f5f7ff;
     --muted: #9aa3c7;
+    --win-glow: 0 0 0 2px #ffcb05, 0 0 32px 4px rgba(255,203,5,0.35), 0 20px 60px -20px rgba(0,0,0,.6);
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     background: radial-gradient(1200px 600px at 20% -10%, #2a3170 0%, var(--bg) 60%);
     color: var(--text);
     min-height: 100vh;
     display: flex; flex-direction: column; align-items: center;
-    padding: 32px 16px 64px;
+    padding: 32px 16px 80px;
   }
-  h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 44px); text-align: center; letter-spacing: -0.02em; }
+  h1 { margin: 0 0 8px; font-size: clamp(26px, 4vw, 44px); text-align: center; letter-spacing: -0.02em; }
   h1 .y { color: var(--accent); } h1 .b { color: var(--accent2); }
-  p.tag { color: var(--muted); margin: 0 0 28px; text-align:center; }
-  .card { width: 100%; max-width: 560px; background: var(--card); border: 1px solid #2a2f55; border-radius: 18px; padding: 24px; box-shadow: 0 20px 60px -20px rgba(0,0,0,.5); }
-  .drop { border: 2px dashed #3a4172; border-radius: 14px; padding: 32px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
+  p.tag { color: var(--muted); margin: 0 0 28px; text-align: center; font-size: 15px; max-width: 480px; line-height: 1.5; }
+
+  /* Card container */
+  .card { width: 100%; max-width: 580px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 20px 60px -20px rgba(0,0,0,.5); }
+
+  /* Upload zone */
+  .drop { border: 2px dashed #3a4172; border-radius: 14px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
   .drop.over { border-color: var(--accent); background: #20264a; }
-  .drop p { margin: 6px 0; }
-  .drop .hint { color: var(--muted); font-size: 13px; }
+  .drop p { color: var(--muted); font-size: 14px; margin-top: 6px; }
   input[type=file] { display: none; }
-  .btn { display: inline-block; background: var(--accent); color: #1a1a1a; font-weight: 700; padding: 10px 18px; border-radius: 999px; border: none; cursor: pointer; margin-top: 12px; }
+
+  .upload-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; background: var(--accent); color: #1a1a1a; font-weight: 700; font-size: 14px; padding: 11px 20px; border-radius: 999px; border: none; cursor: pointer; min-height: 44px; transition: opacity .15s, transform .1s; white-space: nowrap; }
+  .btn:active { transform: scale(.97); }
   .btn:disabled { opacity: .4; cursor: not-allowed; }
-  .preview-wrap { margin-top: 20px; display: none; flex-direction: column; align-items: center; gap: 16px; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1.5px solid var(--border); font-weight: 600; }
+  .btn-ghost:hover { border-color: var(--accent2); }
+  .btn-share { background: var(--accent2); color: #fff; margin-top: 16px; }
+  .btn-try { background: transparent; color: var(--muted); border: 1.5px solid var(--border); margin-top: 14px; }
+
+  /* Status / error */
+  .status { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 16px; text-align: center; }
+  .err { color: #ff8a8a; margin-top: 8px; font-size: 13px; text-align: center; }
+
+  /* Camera UI */
+  .camera-wrap { display: none; flex-direction: column; align-items: center; gap: 12px; margin-top: 18px; }
+  .camera-wrap.show { display: flex; }
+  #camVideo { width: 100%; max-width: 320px; border-radius: 14px; border: 2px solid var(--border); background: #000; }
+  .camera-actions { display: flex; gap: 10px; }
+
+  /* Preview & result area */
+  .preview-wrap { margin-top: 20px; display: none; flex-direction: column; align-items: center; gap: 20px; }
   .preview-wrap.show { display: flex; }
-  .you-wrap { position: relative; width: 200px; height: 200px; }
-  .you { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 4px solid var(--accent); }
-  .face-canvas { position: absolute; top: 4px; left: 4px; width: calc(100% - 8px); height: calc(100% - 8px); border-radius: 50%; pointer-events: none; }
-  .vs { font-size: 28px; color: var(--muted); }
-  .result { width: 100%; background: linear-gradient(180deg, #20264a 0%, #1a1f3a 100%); border-radius: 14px; padding: 20px; text-align: center; border: 1px solid #2f3666; }
-  .result img.poke { width: 200px; height: 200px; image-rendering: pixelated; }
-  .result h2 { margin: 8px 0 4px; text-transform: capitalize; font-size: 28px; }
-  .result .types { display:flex; justify-content:center; gap:6px; margin: 8px 0; flex-wrap:wrap; }
-  .type-chip { padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 600; color:#fff; text-transform: capitalize; }
-  .reason { color: var(--muted); font-size: 14px; margin-top: 10px; }
-  .features { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 16px; margin-top: 14px; font-size: 12px; color: var(--muted); text-align: left; }
-  .features span strong { color: #fff; font-weight: 600; }
-  footer { color: var(--muted); margin-top: 28px; font-size: 12px; text-align:center; }
-  .err { color: #ff8a8a; margin-top: 8px; font-size: 13px; }
-  .spinner { width: 28px; height: 28px; border: 3px solid #2f3666; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+
+  .you-wrap { position: relative; width: 180px; height: 180px; flex-shrink: 0; }
+  .you { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent); }
+  .face-canvas { position: absolute; top: 3px; left: 3px; width: calc(100% - 6px); height: calc(100% - 6px); border-radius: 50%; pointer-events: none; }
+
+  /* Pokéball spinner */
+  .pokeball-spinner {
+    width: 52px; height: 52px; position: relative; animation: spin 1s linear infinite; display: none;
+  }
+  .pokeball-spinner svg { width: 100%; height: 100%; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .status { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; }
+
+  /* Results */
+  .results-area { width: 100%; }
+
+  /* Winner card */
+  .winner-card {
+    background: linear-gradient(160deg, #232a50 0%, #1a1f3a 100%);
+    border-radius: 18px; padding: 24px 20px 20px;
+    border: 1px solid var(--border);
+    text-align: center;
+    animation: fadeInUp .5s ease forwards;
+    opacity: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .winner-card.revealed { box-shadow: var(--win-glow); border-color: rgba(255,203,5,0.6); }
+  .winner-card::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(255,203,5,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  @keyframes fadeInUp { from { opacity:0; transform: translateY(16px); } to { opacity:1; transform: translateY(0); } }
+
+  .winner-badge { display: inline-block; background: var(--accent); color: #1a1a1a; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; margin-bottom: 12px; }
+
+  .poke-sprite { width: 180px; height: 180px; image-rendering: pixelated; object-fit: contain; }
+  .poke-name { font-size: 26px; font-weight: 800; text-transform: capitalize; margin: 8px 0 4px; letter-spacing: -0.01em; }
+  .match-pct { font-size: 38px; font-weight: 900; color: var(--accent); line-height: 1; margin: 6px 0; }
+  .match-pct span { font-size: 18px; font-weight: 600; color: var(--muted); }
+
+  .types { display: flex; justify-content: center; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .type-chip { padding: 4px 13px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #fff; text-transform: capitalize; letter-spacing: 0.04em; }
+
+  .reason { color: var(--muted); font-size: 14px; margin-top: 10px; line-height: 1.5; }
+  .features-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 16px; margin-top: 14px; font-size: 12px; color: var(--muted); text-align: left; }
+  .features-grid span strong { color: #fff; font-weight: 600; }
+
+  /* Runner-up cards */
+  .runners-up { display: flex; gap: 12px; margin-top: 14px; }
+  .runner-card {
+    flex: 1; background: rgba(26,31,58,0.8); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 12px; text-align: center;
+    animation: fadeInUp .5s ease forwards; opacity: 0;
+    transition: border-color .2s;
+  }
+  .runner-card:hover { border-color: var(--accent2); }
+  .runner-place { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .runner-sprite { width: 64px; height: 64px; image-rendering: pixelated; object-fit: contain; }
+  .runner-name { font-size: 14px; font-weight: 700; text-transform: capitalize; margin: 4px 0 2px; }
+  .runner-pct { font-size: 18px; font-weight: 800; color: var(--accent2); }
+
+  @media (max-width: 440px) {
+    .runners-up { flex-direction: column; }
+    .runner-card { display: flex; align-items: center; gap: 12px; text-align: left; }
+    .runner-card .runner-place, .runner-card .runner-name, .runner-card .runner-pct { display: block; }
+    .runner-card .runner-sprite { width: 52px; height: 52px; flex-shrink: 0; }
+  }
+
+  footer { color: var(--muted); margin-top: 32px; font-size: 12px; text-align: center; line-height: 1.6; }
+  footer a { color: var(--accent2); text-decoration: none; }
 </style>
 </head>
 <body>
   <h1><span class="y">Which</span> <span class="b">Pokémon</span> do you resemble<span class="y">?</span></h1>
-  <p class="tag">Upload a face photo. We detect 478 facial landmarks and match your bone structure to a Pokémon.</p>
+  <p class="tag">Upload a face photo — AI detects 478 facial landmarks and matches your bone structure to the Pokémon you most resemble.</p>
 
   <div class="card">
     <label class="drop" id="drop">
       <input type="file" id="file" accept="image/*" />
-      <p><strong>Click to upload</strong> or drag & drop</p>
-      <p class="hint">Front-facing face works best · all processing happens in your browser</p>
+      <strong style="font-size:15px">Click or drag & drop a photo</strong>
+      <p>Front-facing face works best · all processing happens in your browser</p>
     </label>
-    <div class="status" id="status">Loading face detection model…</div>
     <div id="err" class="err"></div>
+    <div class="status" id="status">Loading face detection model…</div>
 
+    <div class="upload-actions">
+      <button class="btn" id="uploadBtn" type="button" onclick="document.getElementById('file').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Photo
+      </button>
+      <button class="btn btn-ghost" id="cameraBtn" type="button">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        Use Camera
+      </button>
+    </div>
+
+    <!-- Camera UI -->
+    <div class="camera-wrap" id="cameraWrap">
+      <video id="camVideo" autoplay playsinline muted></video>
+      <div class="camera-actions">
+        <button class="btn" id="captureBtn" type="button">📸 Capture</button>
+        <button class="btn btn-ghost" id="closeCamBtn" type="button">Cancel</button>
+      </div>
+      <canvas id="camCanvas" style="display:none"></canvas>
+    </div>
+
+    <!-- Preview & results -->
     <div class="preview-wrap" id="previewWrap">
       <div class="you-wrap">
         <img class="you" id="you" alt="you" />
-        <canvas class="face-canvas" id="faceCanvas" width="200" height="200"></canvas>
+        <canvas class="face-canvas" id="faceCanvas" width="180" height="180"></canvas>
       </div>
-      <div class="vs">↓</div>
-      <div id="loading" class="spinner" style="display:none"></div>
-      <div class="result" id="result" style="display:none">
-        <img class="poke" id="pokeImg" alt="" />
-        <h2 id="pokeName"></h2>
-        <div class="types" id="pokeTypes"></div>
-        <div class="reason" id="reason"></div>
-        <div class="features" id="features"></div>
+
+      <!-- Pokéball spinner -->
+      <div class="pokeball-spinner" id="spinner">
+        <svg viewBox="0 0 52 52" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="26" cy="26" r="24" fill="none" stroke="#2a2f55" stroke-width="4"/>
+          <path d="M2 26 A24 24 0 0 1 50 26" stroke="#ee1515" stroke-width="4" fill="none" stroke-linecap="round"/>
+          <line x1="2" y1="26" x2="50" y2="26" stroke="#2a2f55" stroke-width="3"/>
+          <circle cx="26" cy="26" r="6" fill="#1a1f3a" stroke="#2a2f55" stroke-width="3"/>
+          <circle cx="26" cy="26" r="3" fill="#fff"/>
+        </svg>
       </div>
-      <button class="btn" id="again" style="display:none">Try another photo</button>
+      <div class="status" id="analyzeStatus" style="display:none"></div>
+
+      <!-- Results -->
+      <div class="results-area" id="resultsArea" style="display:none">
+        <!-- Winner -->
+        <div class="winner-card" id="winnerCard">
+          <div class="winner-badge">🏆 Best Match</div>
+          <img class="poke-sprite" id="pokeImg" crossorigin="anonymous" alt="" />
+          <div class="match-pct" id="matchPct">—<span>%</span></div>
+          <div class="poke-name" id="pokeName"></div>
+          <div class="types" id="pokeTypes"></div>
+          <div class="reason" id="reason"></div>
+          <div class="features-grid" id="features"></div>
+        </div>
+
+        <!-- Runners-up -->
+        <div class="runners-up" id="runnersUp">
+          <div class="runner-card" id="runner1">
+            <div class="runner-place">2nd Place</div>
+            <img class="runner-sprite" id="runner1Img" crossorigin="anonymous" alt="" />
+            <div class="runner-name" id="runner1Name"></div>
+            <div class="runner-pct" id="runner1Pct"></div>
+          </div>
+          <div class="runner-card" id="runner2">
+            <div class="runner-place">3rd Place</div>
+            <img class="runner-sprite" id="runner2Img" crossorigin="anonymous" alt="" />
+            <div class="runner-name" id="runner2Name"></div>
+            <div class="runner-pct" id="runner2Pct"></div>
+          </div>
+        </div>
+
+        <!-- Share + Try Again -->
+        <div style="text-align:center">
+          <button class="btn btn-share" id="shareBtn" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share Result
+          </button>
+          <br>
+          <button class="btn btn-try" id="again" type="button">Try another photo</button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <footer>Face detection: MediaPipe · Sprites: PokeAPI · Not affiliated with The Pokémon Company.</footer>
+  <footer>
+    Face detection: <a href="https://mediapipe.dev" target="_blank">MediaPipe</a> ·
+    Sprites &amp; data: <a href="https://pokeapi.co" target="_blank">PokéAPI</a> ·
+    Not affiliated with The Pokémon Company.
+  </footer>
 
 <script type="module">
 import { FilesetResolver, FaceLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 
-// Pokémon facial profiles. Features are normalized 0..1-ish.
-//   wh:   face width / face height (1.0 = round/square, <0.8 = long, >1.0 = wide)
-//   eye:  eye width / face width (0.05 = tiny, 0.20 = huge)
-//   open: eye height / eye width (0.1 = squinty/narrow, 0.6 = big round eyes)
-//   jaw:  jaw width / cheek width (0.6 = pointy, 1.0 = square)
-//   nose: nose length / face height (0.05 = flat, 0.30 = long)
-//   mouth: mouth width / face width (0.20 = small, 0.55 = wide)
+// ─── Pokémon profiles ────────────────────────────────────────────────────────
+// Features (all normalized 0..1):
+//   wh:      face width / face height (round=1.0+, oval=0.85-0.95, long=0.70-0.80)
+//   eye:     eye width / face width   (tiny=0.07, normal=0.13, large=0.17, huge=0.20+)
+//   open:    eye height / eye width   (squinting=0.15-0.25, neutral=0.35-0.45, wide=0.55+)
+//   jaw:     jaw width / cheek width  (pointed=0.55-0.65, balanced=0.80-0.90, square=0.95+)
+//   nose:    nose length / face height (flat=0.03-0.08, avg=0.10-0.18, long=0.20+)
+//   mouth:   mouth width / face width  (small=0.18, avg=0.30, wide=0.45+)
+//   brow_h:  brow Y / face height      (high-brow/large-forehead=0.35, avg=0.45, low=0.55+)
+//   eye_gap: inter-eye dist / face width (close-set=0.15, normal=0.22, wide-set=0.30+)
 const POKEMON = [
-  { name:"pikachu",    id:25,  wh:1.00, eye:0.18, open:0.55, jaw:0.65, nose:0.06, mouth:0.18, rgb:[255,203,5],   tag:"bright cheerful round" },
-  { name:"jigglypuff", id:39,  wh:1.05, eye:0.22, open:0.60, jaw:0.55, nose:0.04, mouth:0.20, rgb:[255,180,200], tag:"super round, huge eyes" },
-  { name:"charizard",  id:6,   wh:0.70, eye:0.10, open:0.20, jaw:0.80, nose:0.25, mouth:0.45, rgb:[220,80,30],   tag:"long sharp dragon-faced" },
-  { name:"charmander", id:4,   wh:0.95, eye:0.15, open:0.45, jaw:0.70, nose:0.08, mouth:0.32, rgb:[240,128,48],  tag:"warm rounded confident" },
-  { name:"bulbasaur",  id:1,   wh:1.00, eye:0.16, open:0.50, jaw:0.95, nose:0.05, mouth:0.40, rgb:[120,200,80],  tag:"wide grounded friendly" },
-  { name:"squirtle",   id:7,   wh:0.95, eye:0.17, open:0.50, jaw:0.85, nose:0.05, mouth:0.22, rgb:[110,190,230], tag:"round soft cheeked" },
-  { name:"blastoise",  id:9,   wh:0.95, eye:0.10, open:0.25, jaw:0.95, nose:0.06, mouth:0.40, rgb:[80,130,200],  tag:"square stoic broad-jawed" },
-  { name:"gengar",     id:94,  wh:0.95, eye:0.14, open:0.20, jaw:0.95, nose:0.03, mouth:0.55, rgb:[80,60,110],   tag:"wide grin, narrow eyes" },
-  { name:"mewtwo",     id:150, wh:0.70, eye:0.10, open:0.20, jaw:0.65, nose:0.18, mouth:0.16, rgb:[180,175,200], tag:"long narrow intense" },
-  { name:"snorlax",    id:143, wh:1.10, eye:0.08, open:0.15, jaw:1.05, nose:0.08, mouth:0.22, rgb:[70,90,110],   tag:"wide soft sleepy" },
-  { name:"eevee",      id:133, wh:0.95, eye:0.18, open:0.55, jaw:0.60, nose:0.05, mouth:0.18, rgb:[200,160,110], tag:"round sweet big-eyed" },
-  { name:"psyduck",    id:54,  wh:0.85, eye:0.15, open:0.30, jaw:0.85, nose:0.05, mouth:0.42, rgb:[245,220,110], tag:"oval bewildered wide-billed" },
-  { name:"machamp",    id:68,  wh:0.95, eye:0.10, open:0.25, jaw:0.95, nose:0.12, mouth:0.36, rgb:[120,140,180], tag:"square chiseled jaw" },
-  { name:"lapras",     id:131, wh:0.90, eye:0.16, open:0.45, jaw:0.90, nose:0.05, mouth:0.22, rgb:[120,160,200], tag:"gentle round long-necked" },
-  { name:"ditto",      id:132, wh:1.00, eye:0.12, open:0.30, jaw:0.55, nose:0.03, mouth:0.18, rgb:[200,130,200], tag:"blob, no real features" },
-  { name:"onix",       id:95,  wh:0.55, eye:0.10, open:0.25, jaw:0.70, nose:0.22, mouth:0.40, rgb:[120,120,130], tag:"extremely long stone face" },
-  { name:"gyarados",   id:130, wh:0.55, eye:0.12, open:0.25, jaw:0.70, nose:0.30, mouth:0.55, rgb:[50,90,160],   tag:"long furious wide-mouthed" },
-  { name:"vulpix",     id:37,  wh:0.95, eye:0.18, open:0.55, jaw:0.60, nose:0.06, mouth:0.18, rgb:[220,150,100], tag:"foxlike, pointed delicate" },
-  { name:"umbreon",    id:197, wh:0.85, eye:0.13, open:0.30, jaw:0.70, nose:0.10, mouth:0.20, rgb:[40,40,60],    tag:"sleek narrow night-eyed" },
-  { name:"espeon",     id:196, wh:0.90, eye:0.18, open:0.50, jaw:0.65, nose:0.06, mouth:0.18, rgb:[200,140,200], tag:"elegant big-eyed feline" },
-  { name:"absol",      id:359, wh:0.75, eye:0.12, open:0.22, jaw:0.70, nose:0.18, mouth:0.20, rgb:[230,230,240], tag:"long sharp solemn" },
-  { name:"lucario",    id:448, wh:0.80, eye:0.13, open:0.30, jaw:0.75, nose:0.20, mouth:0.20, rgb:[50,80,130],   tag:"long muzzle, focused" },
+  // ── Gen 1 classics ──
+  { name:"pikachu",    id:25,  wh:1.00, eye:0.18, open:0.55, jaw:0.65, nose:0.06, mouth:0.18, brow_h:0.42, eye_gap:0.22, rgb:[255,203,5],   tag:"bright cheerful round" },
+  { name:"jigglypuff", id:39,  wh:1.05, eye:0.22, open:0.60, jaw:0.55, nose:0.04, mouth:0.20, brow_h:0.38, eye_gap:0.22, rgb:[255,180,200], tag:"super round, huge eyes" },
+  { name:"charizard",  id:6,   wh:0.70, eye:0.10, open:0.20, jaw:0.80, nose:0.25, mouth:0.45, brow_h:0.48, eye_gap:0.22, rgb:[220,80,30],   tag:"long sharp dragon-faced" },
+  { name:"charmander", id:4,   wh:0.95, eye:0.15, open:0.45, jaw:0.70, nose:0.08, mouth:0.32, brow_h:0.42, eye_gap:0.22, rgb:[240,128,48],  tag:"warm rounded confident" },
+  { name:"bulbasaur",  id:1,   wh:1.00, eye:0.16, open:0.50, jaw:0.95, nose:0.05, mouth:0.40, brow_h:0.45, eye_gap:0.28, rgb:[120,200,80],  tag:"wide grounded friendly" },
+  { name:"squirtle",   id:7,   wh:0.95, eye:0.17, open:0.50, jaw:0.85, nose:0.05, mouth:0.22, brow_h:0.42, eye_gap:0.24, rgb:[110,190,230], tag:"round soft cheeked" },
+  { name:"blastoise",  id:9,   wh:0.95, eye:0.10, open:0.25, jaw:0.95, nose:0.06, mouth:0.40, brow_h:0.50, eye_gap:0.26, rgb:[80,130,200],  tag:"square stoic broad-jawed" },
+  { name:"gengar",     id:94,  wh:0.95, eye:0.14, open:0.20, jaw:0.95, nose:0.03, mouth:0.55, brow_h:0.48, eye_gap:0.32, rgb:[80,60,110],   tag:"wide grin, narrow eyes" },
+  { name:"mewtwo",     id:150, wh:0.70, eye:0.10, open:0.20, jaw:0.65, nose:0.18, mouth:0.16, brow_h:0.42, eye_gap:0.18, rgb:[180,175,200], tag:"long narrow intense" },
+  { name:"snorlax",    id:143, wh:1.10, eye:0.08, open:0.15, jaw:1.05, nose:0.08, mouth:0.22, brow_h:0.58, eye_gap:0.28, rgb:[70,90,110],   tag:"wide soft sleepy" },
+  { name:"eevee",      id:133, wh:0.95, eye:0.18, open:0.55, jaw:0.60, nose:0.05, mouth:0.18, brow_h:0.40, eye_gap:0.24, rgb:[200,160,110], tag:"round sweet big-eyed" },
+  { name:"psyduck",    id:54,  wh:0.85, eye:0.15, open:0.30, jaw:0.85, nose:0.05, mouth:0.42, brow_h:0.52, eye_gap:0.26, rgb:[245,220,110], tag:"oval bewildered wide-billed" },
+  { name:"machamp",    id:68,  wh:0.95, eye:0.10, open:0.25, jaw:0.95, nose:0.12, mouth:0.36, brow_h:0.52, eye_gap:0.24, rgb:[120,140,180], tag:"square chiseled jaw" },
+  { name:"lapras",     id:131, wh:0.90, eye:0.16, open:0.45, jaw:0.90, nose:0.05, mouth:0.22, brow_h:0.40, eye_gap:0.26, rgb:[120,160,200], tag:"gentle round long-necked" },
+  { name:"ditto",      id:132, wh:1.00, eye:0.12, open:0.30, jaw:0.55, nose:0.03, mouth:0.18, brow_h:0.50, eye_gap:0.22, rgb:[200,130,200], tag:"blob, no real features" },
+  { name:"onix",       id:95,  wh:0.55, eye:0.10, open:0.25, jaw:0.70, nose:0.22, mouth:0.40, brow_h:0.45, eye_gap:0.18, rgb:[120,120,130], tag:"extremely long stone face" },
+  { name:"gyarados",   id:130, wh:0.55, eye:0.12, open:0.25, jaw:0.70, nose:0.30, mouth:0.55, brow_h:0.45, eye_gap:0.20, rgb:[50,90,160],   tag:"long furious wide-mouthed" },
+  { name:"vulpix",     id:37,  wh:0.95, eye:0.18, open:0.55, jaw:0.60, nose:0.06, mouth:0.18, brow_h:0.38, eye_gap:0.22, rgb:[220,150,100], tag:"foxlike, pointed delicate" },
+  { name:"umbreon",    id:197, wh:0.85, eye:0.13, open:0.30, jaw:0.70, nose:0.10, mouth:0.20, brow_h:0.45, eye_gap:0.22, rgb:[40,40,60],    tag:"sleek narrow night-eyed" },
+  { name:"espeon",     id:196, wh:0.90, eye:0.18, open:0.50, jaw:0.65, nose:0.06, mouth:0.18, brow_h:0.38, eye_gap:0.26, rgb:[200,140,200], tag:"elegant big-eyed feline" },
+  { name:"absol",      id:359, wh:0.75, eye:0.12, open:0.22, jaw:0.70, nose:0.18, mouth:0.20, brow_h:0.45, eye_gap:0.20, rgb:[230,230,240], tag:"long sharp solemn" },
+  { name:"lucario",    id:448, wh:0.80, eye:0.13, open:0.30, jaw:0.75, nose:0.20, mouth:0.20, brow_h:0.45, eye_gap:0.22, rgb:[50,80,130],   tag:"long muzzle, focused" },
+  // ── Expanded Gen 1 ──
+  { name:"clefairy",   id:35,  wh:1.05, eye:0.20, open:0.60, jaw:0.60, nose:0.04, mouth:0.22, brow_h:0.40, eye_gap:0.22, rgb:[240,180,220], tag:"super round fairy-cute huge eyes" },
+  { name:"raichu",     id:26,  wh:0.95, eye:0.17, open:0.50, jaw:0.65, nose:0.06, mouth:0.22, brow_h:0.42, eye_gap:0.22, rgb:[220,150,50],  tag:"warm big-eyed round electric" },
+  { name:"arcanine",   id:59,  wh:0.90, eye:0.14, open:0.40, jaw:0.80, nose:0.22, mouth:0.48, brow_h:0.45, eye_gap:0.28, rgb:[200,100,50],  tag:"noble wide-muzzled fire dog" },
+  { name:"ninetales",  id:38,  wh:0.80, eye:0.15, open:0.40, jaw:0.65, nose:0.15, mouth:0.22, brow_h:0.38, eye_gap:0.24, rgb:[220,190,120], tag:"elegant narrow foxy" },
+  { name:"alakazam",   id:65,  wh:0.60, eye:0.10, open:0.25, jaw:0.60, nose:0.28, mouth:0.18, brow_h:0.50, eye_gap:0.20, rgb:[200,180,90],  tag:"extremely long narrow psychic" },
+  { name:"hypno",      id:97,  wh:0.95, eye:0.12, open:0.20, jaw:0.90, nose:0.12, mouth:0.35, brow_h:0.55, eye_gap:0.22, rgb:[200,180,80],  tag:"drowsy heavy-lidded round" },
+  { name:"slowpoke",   id:79,  wh:1.00, eye:0.10, open:0.20, jaw:1.00, nose:0.05, mouth:0.50, brow_h:0.55, eye_gap:0.28, rgb:[230,180,220], tag:"dopey wide-mouthed blank" },
+  { name:"persian",    id:53,  wh:0.90, eye:0.16, open:0.30, jaw:0.75, nose:0.08, mouth:0.30, brow_h:0.42, eye_gap:0.25, rgb:[210,180,160], tag:"cool smooth feline almond-eyed" },
+  { name:"jynx",       id:124, wh:0.85, eye:0.18, open:0.55, jaw:0.90, nose:0.05, mouth:0.50, brow_h:0.40, eye_gap:0.24, rgb:[200,130,80],  tag:"dramatic big-lipped dramatic-eyed" },
+  { name:"electabuzz", id:125, wh:0.82, eye:0.12, open:0.30, jaw:0.78, nose:0.14, mouth:0.32, brow_h:0.46, eye_gap:0.22, rgb:[250,200,60],  tag:"pointed fierce stripes electric" },
+  { name:"mr-mime",    id:122, wh:0.80, eye:0.17, open:0.50, jaw:0.60, nose:0.08, mouth:0.38, brow_h:0.35, eye_gap:0.30, rgb:[200,180,230], tag:"tall forehead wide-set eyes clown" },
+  { name:"dragonite",  id:149, wh:0.95, eye:0.14, open:0.45, jaw:0.85, nose:0.08, mouth:0.42, brow_h:0.45, eye_gap:0.26, rgb:[250,190,100], tag:"friendly round dragon wide grin" },
+  // ── Gen 2 ──
+  { name:"mew",        id:151, wh:1.00, eye:0.19, open:0.58, jaw:0.58, nose:0.06, mouth:0.18, brow_h:0.40, eye_gap:0.26, rgb:[255,170,220], tag:"ethereal round cat-like divine" },
+  { name:"togepi",     id:175, wh:1.10, eye:0.22, open:0.65, jaw:0.55, nose:0.03, mouth:0.16, brow_h:0.38, eye_gap:0.20, rgb:[240,240,200], tag:"egg-shaped giant eyes pointed chin" },
+  { name:"marill",     id:183, wh:1.15, eye:0.18, open:0.55, jaw:0.70, nose:0.04, mouth:0.18, brow_h:0.42, eye_gap:0.24, rgb:[100,160,220], tag:"balloon-round blue water-type" },
+  { name:"totodile",   id:158, wh:0.90, eye:0.12, open:0.40, jaw:1.00, nose:0.22, mouth:0.55, brow_h:0.45, eye_gap:0.28, rgb:[50,160,200],  tag:"wide-jawed toothy grin" },
+  { name:"chikorita",  id:152, wh:1.00, eye:0.18, open:0.55, jaw:0.65, nose:0.05, mouth:0.22, brow_h:0.40, eye_gap:0.24, rgb:[120,200,100], tag:"sweet round leafy green" },
+  { name:"cyndaquil",  id:155, wh:0.95, eye:0.11, open:0.15, jaw:0.65, nose:0.08, mouth:0.18, brow_h:0.50, eye_gap:0.20, rgb:[220,100,50],  tag:"tiny eyes round snout shy fire" },
+  { name:"ampharos",   id:181, wh:0.80, eye:0.16, open:0.50, jaw:0.70, nose:0.08, mouth:0.28, brow_h:0.38, eye_gap:0.24, rgb:[250,230,50],  tag:"tall elegant oval warm-eyed" },
+  { name:"heracross",  id:214, wh:0.90, eye:0.11, open:0.30, jaw:0.92, nose:0.12, mouth:0.38, brow_h:0.48, eye_gap:0.26, rgb:[80,120,200],  tag:"broad-jawed strong beetle" },
+  { name:"snubbull",   id:209, wh:1.10, eye:0.11, open:0.22, jaw:1.05, nose:0.06, mouth:0.48, brow_h:0.55, eye_gap:0.26, rgb:[250,130,180], tag:"grumpy wide underbite bulldog" },
+  { name:"tyranitar",  id:248, wh:1.05, eye:0.08, open:0.20, jaw:1.10, nose:0.10, mouth:0.48, brow_h:0.50, eye_gap:0.30, rgb:[80,100,70],   tag:"massive armored tiny eyes huge jaw" },
+  // ── Eeveelutions ──
+  { name:"flareon",    id:136, wh:1.00, eye:0.18, open:0.55, jaw:0.65, nose:0.05, mouth:0.20, brow_h:0.42, eye_gap:0.24, rgb:[240,120,60],  tag:"fluffy warm round bright-eyed" },
+  { name:"vaporeon",   id:134, wh:0.90, eye:0.17, open:0.50, jaw:0.68, nose:0.07, mouth:0.22, brow_h:0.40, eye_gap:0.26, rgb:[80,180,220],  tag:"sleek water-type elegant oval" },
+  { name:"glaceon",    id:471, wh:0.82, eye:0.14, open:0.38, jaw:0.70, nose:0.12, mouth:0.20, brow_h:0.38, eye_gap:0.22, rgb:[120,200,230], tag:"angular diamond-faced ice type" },
+  { name:"sylveon",    id:700, wh:1.02, eye:0.20, open:0.60, jaw:0.62, nose:0.04, mouth:0.20, brow_h:0.38, eye_gap:0.24, rgb:[240,150,180], tag:"fairy-tale round huge eyes delicate" },
+  // ── Gen 3 ──
+  { name:"gardevoir",  id:282, wh:0.80, eye:0.16, open:0.50, jaw:0.62, nose:0.06, mouth:0.18, brow_h:0.36, eye_gap:0.26, rgb:[200,200,220], tag:"graceful narrow elegant psychic" },
+  { name:"salamence",  id:373, wh:0.72, eye:0.10, open:0.22, jaw:0.80, nose:0.22, mouth:0.48, brow_h:0.48, eye_gap:0.22, rgb:[80,100,200],  tag:"fierce angular dragon" },
+  { name:"garchomp",   id:445, wh:0.70, eye:0.09, open:0.22, jaw:0.72, nose:0.20, mouth:0.45, brow_h:0.48, eye_gap:0.22, rgb:[50,100,180],  tag:"sharp angular shark-like fierce" },
 ];
 
 const TYPE_COLORS = {
@@ -132,13 +322,22 @@ const TYPE_COLORS = {
   fairy:"#D685AD", normal:"#A8A77A"
 };
 
+// ─── DOM refs ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
-const drop=$("drop"), fileInput=$("file"), youImg=$("you"), faceCanvas=$("faceCanvas");
-const previewWrap=$("previewWrap"), result=$("result"), loading=$("loading");
-const errBox=$("err"), again=$("again"), statusEl=$("status");
+const drop=$("drop"), fileInput=$("file");
+const youImg=$("you"), faceCanvas=$("faceCanvas");
+const previewWrap=$("previewWrap"), resultsArea=$("resultsArea");
+const spinner=$("spinner"), analyzeStatus=$("analyzeStatus");
+const errBox=$("err"), statusEl=$("status");
+const cameraBtn=$("cameraBtn"), cameraWrap=$("cameraWrap");
+const camVideo=$("camVideo"), captureBtn=$("captureBtn"), closeCamBtn=$("closeCamBtn"), camCanvas=$("camCanvas");
+const shareBtn=$("shareBtn"), again=$("again");
 
 let landmarker = null;
+let camStream = null;
+let lastResult = null; // { name, pct } for share
 
+// ─── Load model ──────────────────────────────────────────────────────────────
 (async () => {
   try {
     const fileset = await FilesetResolver.forVisionTasks(
@@ -153,23 +352,59 @@ let landmarker = null;
       runningMode: "IMAGE",
       numFaces: 1,
     });
-    statusEl.textContent = "Ready. Drop a face photo.";
+    statusEl.textContent = "Ready — drop a face photo or use your camera.";
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Couldn't load face model — falling back to color match.";
+    statusEl.textContent = "Face model unavailable — falling back to color matching.";
   }
 })();
 
+// ─── Drag & drop / file input ─────────────────────────────────────────────────
 ["dragenter","dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
 ["dragleave","drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
 drop.addEventListener("drop", e => { const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); });
 fileInput.addEventListener("change", e => { const f = e.target.files?.[0]; if (f) handleFile(f); });
-again.addEventListener("click", () => {
-  fileInput.value = ""; previewWrap.classList.remove("show");
-  result.style.display = "none"; again.style.display = "none"; errBox.textContent = "";
-  faceCanvas.getContext("2d").clearRect(0,0,faceCanvas.width,faceCanvas.height);
+
+// ─── Camera ──────────────────────────────────────────────────────────────────
+cameraBtn.addEventListener("click", async () => {
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    camVideo.srcObject = camStream;
+    cameraWrap.classList.add("show");
+    errBox.textContent = "";
+  } catch (e) {
+    errBox.textContent = "Camera access denied or unavailable.";
+  }
 });
 
+captureBtn.addEventListener("click", () => {
+  camCanvas.width = camVideo.videoWidth;
+  camCanvas.height = camVideo.videoHeight;
+  camCanvas.getContext("2d").drawImage(camVideo, 0, 0);
+  stopCamera();
+  camCanvas.toBlob(blob => handleFile(new File([blob], "capture.jpg", { type: "image/jpeg" })), "image/jpeg", 0.9);
+});
+
+closeCamBtn.addEventListener("click", stopCamera);
+
+function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  camVideo.srcObject = null;
+  cameraWrap.classList.remove("show");
+}
+
+// ─── Reset ────────────────────────────────────────────────────────────────────
+again.addEventListener("click", () => {
+  fileInput.value = "";
+  previewWrap.classList.remove("show");
+  resultsArea.style.display = "none";
+  errBox.textContent = "";
+  lastResult = null;
+  document.title = "Which Pokémon Do You Resemble?";
+  faceCanvas.getContext("2d").clearRect(0, 0, faceCanvas.width, faceCanvas.height);
+});
+
+// ─── Handle file ─────────────────────────────────────────────────────────────
 function handleFile(file) {
   errBox.textContent = "";
   if (!file.type.startsWith("image/")) { errBox.textContent = "Please pick an image file."; return; }
@@ -177,188 +412,221 @@ function handleFile(file) {
   reader.onload = () => {
     youImg.src = reader.result;
     previewWrap.classList.add("show");
-    loading.style.display = "block";
-    result.style.display = "none"; again.style.display = "none";
+    spinner.style.display = "block";
+    analyzeStatus.style.display = "block";
+    analyzeStatus.textContent = "Analyzing your features…";
+    resultsArea.style.display = "none";
     youImg.onload = () => analyze(youImg);
   };
   reader.readAsDataURL(file);
 }
 
-// Helpers ---------------------------------------------------------------
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-// Compute structural features from MediaPipe landmarks (normalized 0..1)
 function computeFeatures(lm) {
-  const top    = lm[10];   // forehead top
-  const chin   = lm[152];  // chin
-  const cheekL = lm[234];  // left cheek
-  const cheekR = lm[454];  // right cheek
-
-  const faceW = dist(cheekL, cheekR);
-  const faceH = dist(top, chin);
+  const top    = lm[10];  // forehead top
+  const chin   = lm[152]; // chin
+  const cheekL = lm[234]; // left cheek
+  const cheekR = lm[454]; // right cheek
+  const faceW  = dist(cheekL, cheekR);
+  const faceH  = dist(top, chin);
 
   // Eyes
-  const lEyeOut = lm[33], lEyeIn = lm[133], lEyeTop = lm[159], lEyeBot = lm[145];
+  const lEyeOut = lm[33],  lEyeIn = lm[133], lEyeTop = lm[159], lEyeBot = lm[145];
   const rEyeOut = lm[263], rEyeIn = lm[362], rEyeTop = lm[386], rEyeBot = lm[374];
   const eyeW = (dist(lEyeOut, lEyeIn) + dist(rEyeOut, rEyeIn)) / 2;
   const eyeH = (dist(lEyeTop, lEyeBot) + dist(rEyeTop, rEyeBot)) / 2;
 
-  // Jaw — use points 172/397 (jaw corners) vs cheek width
+  // Jaw
   const jawL = lm[172], jawR = lm[397];
   const jawW = dist(jawL, jawR);
 
-  // Nose — top of nose bridge (168) to nose tip (1)
+  // Nose
   const noseTop = lm[168], noseTip = lm[1];
   const noseLen = dist(noseTop, noseTip);
 
-  // Mouth corners
+  // Mouth
   const mouthL = lm[61], mouthR = lm[291];
   const mouthW = dist(mouthL, mouthR);
 
-  return {
-    wh:    faceW / faceH,
-    eye:   eyeW / faceW,
-    open:  eyeH / Math.max(eyeW, 0.001),
-    jaw:   jawW / faceW,
-    nose:  noseLen / faceH,
-    mouth: mouthW / faceW,
-  };
+  // Brow height: average Y of outer brow points (lm[105] left, lm[334] right), normalized by face height
+  const browY = (lm[105].y + lm[334].y) / 2;
+  const brow_h = (browY - top.y) / Math.max(faceH, 0.001);
+
+  // Eye gap: inner canthus to inner canthus / face width
+  const eye_gap = dist(lm[133], lm[362]) / Math.max(faceW, 0.001);
+
+  return { wh: faceW/faceH, eye: eyeW/faceW, open: eyeH/Math.max(eyeW,0.001), jaw: jawW/faceW, nose: noseLen/faceH, mouth: mouthW/faceW, brow_h, eye_gap };
 }
 
-// Score = weighted distance across feature dimensions
 function structuralDistance(f, p) {
-  const w = { wh: 2.5, eye: 1.5, open: 1.2, jaw: 2.0, nose: 1.5, mouth: 1.0 };
+  const w = { wh:2.5, eye:1.5, open:1.2, jaw:2.0, nose:1.5, mouth:1.0, brow_h:1.2, eye_gap:1.0 };
   let d = 0;
   for (const k of Object.keys(w)) d += w[k] * (f[k] - p[k]) ** 2;
   return Math.sqrt(d);
 }
 
-// Color helpers (kept as small tiebreaker) -------------------------------
+// ─── Color helpers ────────────────────────────────────────────────────────────
 function rgbToHsv(r,g,b){
   r/=255;g/=255;b/=255;
   const mx=Math.max(r,g,b), mn=Math.min(r,g,b), d=mx-mn;
   let h=0;
-  if (d){
-    if (mx===r) h = ((g-b)/d) % 6;
-    else if (mx===g) h = (b-r)/d + 2;
-    else h = (r-g)/d + 4;
-    h *= 60; if (h<0) h += 360;
-  }
+  if(d){ if(mx===r) h=((g-b)/d)%6; else if(mx===g) h=(b-r)/d+2; else h=(r-g)/d+4; h*=60; if(h<0)h+=360; }
   return [h, mx===0?0:d/mx, mx];
 }
-function hueDist(a,b){ const d = Math.abs(a-b)%360; return d>180?360-d:d; }
+function hueDist(a,b){ const d=Math.abs(a-b)%360; return d>180?360-d:d; }
 function colorDistance(rgb, anchor) {
-  const [h1,s1,v1] = rgbToHsv(...rgb), [h2,s2,v2] = rgbToHsv(...anchor);
-  if (s1<0.15 && s2<0.15) return Math.abs(v1-v2)*1.5;
-  return hueDist(h1,h2)/180 * 2 + Math.abs(s1-s2) + Math.abs(v1-v2)*0.5;
+  const [h1,s1,v1]=rgbToHsv(...rgb), [h2,s2,v2]=rgbToHsv(...anchor);
+  if(s1<0.15&&s2<0.15) return Math.abs(v1-v2)*1.5;
+  return hueDist(h1,h2)/180*2 + Math.abs(s1-s2) + Math.abs(v1-v2)*0.5;
 }
-
 function dominantColor(img) {
-  const c = document.createElement("canvas");
-  c.width = 100; c.height = 100;
-  const ctx = c.getContext("2d");
-  ctx.drawImage(img, 0, 0, 100, 100);
-  const data = ctx.getImageData(20, 60, 60, 35).data;     // shoulders/clothing strip
-  const HBINS=18; const buckets = new Float32Array(HBINS);
-  const sums = []; for(let i=0;i<HBINS;i++) sums.push([0,0,0,0]);
-  for (let i=0;i<data.length;i+=4) {
-    const R=data[i], G=data[i+1], B=data[i+2];
-    const [h,s,v] = rgbToHsv(R,G,B);
-    if (v<0.1 || v>0.95 || s<0.15) continue;
-    const bin = Math.min(HBINS-1, Math.floor(h/(360/HBINS)));
-    const w = s*s;
+  const c=document.createElement("canvas"); c.width=100; c.height=100;
+  const ctx=c.getContext("2d"); ctx.drawImage(img,0,0,100,100);
+  const data=ctx.getImageData(20,60,60,35).data;
+  const HBINS=18, buckets=new Float32Array(HBINS), sums=[];
+  for(let i=0;i<HBINS;i++) sums.push([0,0,0,0]);
+  for(let i=0;i<data.length;i+=4){
+    const R=data[i],G=data[i+1],B=data[i+2];
+    const [h,s,v]=rgbToHsv(R,G,B);
+    if(v<0.1||v>0.95||s<0.15) continue;
+    const bin=Math.min(HBINS-1,Math.floor(h/(360/HBINS))), w=s*s;
     buckets[bin]+=w; sums[bin][0]+=R*w; sums[bin][1]+=G*w; sums[bin][2]+=B*w; sums[bin][3]+=w;
   }
-  let bi=0, bw=0; for(let i=0;i<HBINS;i++) if (buckets[i]>bw){bw=buckets[i]; bi=i;}
-  if (bw < 0.1) return [128,128,128];
-  return [Math.round(sums[bi][0]/sums[bi][3]), Math.round(sums[bi][1]/sums[bi][3]), Math.round(sums[bi][2]/sums[bi][3])];
+  let bi=0,bw=0; for(let i=0;i<HBINS;i++) if(buckets[i]>bw){bw=buckets[i];bi=i;}
+  if(bw<0.1) return [128,128,128];
+  return [Math.round(sums[bi][0]/sums[bi][3]),Math.round(sums[bi][1]/sums[bi][3]),Math.round(sums[bi][2]/sums[bi][3])];
 }
 
-// Main analyze -----------------------------------------------------------
+// Convert raw distance to 0–100% match score
+function distToPercent(d) {
+  // Empirically: d~0 = 100%, d~2.5 = 0%. Tuned so typical matches land 60-85%.
+  return Math.max(0, Math.min(100, Math.round(100 * Math.exp(-d * 1.6))));
+}
+
+// ─── Analyze ─────────────────────────────────────────────────────────────────
 async function analyze(img) {
   let features = null;
-
   if (landmarker) {
     try {
       const res = landmarker.detect(img);
-      if (res.faceLandmarks && res.faceLandmarks.length > 0) {
+      if (res.faceLandmarks?.length > 0) {
         features = computeFeatures(res.faceLandmarks[0]);
         drawFaceOverlay(res.faceLandmarks[0]);
       }
-    } catch (e) { console.error("face detect failed", e); }
+    } catch(e) { console.error("face detect failed", e); }
   }
-
   const color = dominantColor(img);
-
   let scored;
   if (features) {
     scored = POKEMON.map(p => {
       const sd = structuralDistance(features, p);
       const cd = colorDistance(color, p.rgb);
-      return { p, score: sd * 0.85 + cd * 0.15, sd, cd };
-    }).sort((a,b)=>a.score-b.score);
+      return { p, dist: sd * 0.85 + cd * 0.15, sd, cd };
+    }).sort((a,b)=>a.dist-b.dist);
   } else {
-    // No face — fall back to pure color
-    scored = POKEMON.map(p => ({ p, score: colorDistance(color, p.rgb) })).sort((a,b)=>a.score-b.score);
+    scored = POKEMON.map(p => ({ p, dist: colorDistance(color, p.rgb), sd:null, cd:null })).sort((a,b)=>a.dist-b.dist);
   }
-
-  showResult(scored[0].p, color, features, scored.slice(1,3).map(s=>s.p), !!features);
+  await showResult(scored, color, features);
 }
 
 function drawFaceOverlay(lm) {
   const ctx = faceCanvas.getContext("2d");
   ctx.clearRect(0,0,faceCanvas.width,faceCanvas.height);
   ctx.fillStyle = "rgba(255,203,5,0.85)";
-  // sample silhouette + key points (every 6th landmark for speed)
-  for (let i = 0; i < lm.length; i += 6) {
+  for (let i=0; i<lm.length; i+=5) {
     const p = lm[i];
     ctx.beginPath();
-    ctx.arc(p.x * faceCanvas.width, p.y * faceCanvas.height, 1.1, 0, Math.PI*2);
+    ctx.arc(p.x*faceCanvas.width, p.y*faceCanvas.height, 1.1, 0, Math.PI*2);
     ctx.fill();
   }
 }
 
-async function showResult(p, rgb, features, runnersUp, usedFace) {
+async function showResult(scored, rgb, features) {
+  spinner.style.display = "none";
+  analyzeStatus.style.display = "none";
   try {
-    const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${p.id}`);
-    const data = await res.json();
-    $("pokeImg").src = data.sprites.other?.["official-artwork"]?.front_default || data.sprites.front_default;
-    $("pokeName").textContent = p.name;
-    const types = data.types.map(t => t.type.name);
-    $("pokeTypes").innerHTML = types.map(t =>
-      `<span class="type-chip" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`
-    ).join("");
+    const [first, second, third] = scored;
+    const pct1 = distToPercent(first.dist);
+    const pct2 = distToPercent(second.dist);
+    const pct3 = distToPercent(third.dist);
+    lastResult = { name: first.p.name, pct: pct1 };
+    document.title = `You match ${capitalize(first.p.name)}! — PokéMatch`;
 
-    const runnersHtml = runnersUp.length
-      ? `<div style="margin-top:10px;font-size:13px">Also a bit of: ${runnersUp.map(r=>`<strong style="color:#fff;text-transform:capitalize">${r.name}</strong>`).join(" · ")}</div>`
-      : "";
+    // Fetch winner data from PokeAPI
+    const data = await fetch(`https://pokeapi.co/api/v2/pokemon/${first.p.id}`).then(r=>r.json());
+    const sprite = data.sprites.other?.["official-artwork"]?.front_default || data.sprites.front_default;
+    const types = data.types.map(t=>t.type.name);
 
-    if (usedFace) {
-      $("reason").innerHTML = `Your face reads as <strong>${p.tag}</strong>.${runnersHtml}`;
+    // Winner
+    $("pokeImg").src = sprite;
+    $("pokeName").textContent = capitalize(first.p.name);
+    $("matchPct").innerHTML = `${pct1}<span>%</span>`;
+    $("pokeTypes").innerHTML = types.map(t=>`<span class="type-chip" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`).join("");
+    $("reason").innerHTML = features
+      ? `Your face reads as <strong>${first.p.tag}</strong>.`
+      : `No face detected — matched on color vibe instead.`;
+    if (features) {
       $("features").innerHTML = `
         <span>Face shape: <strong>${describeWH(features.wh)}</strong></span>
         <span>Eye size: <strong>${describeEye(features.eye)}</strong></span>
         <span>Jaw: <strong>${describeJaw(features.jaw)}</strong></span>
         <span>Nose: <strong>${describeNose(features.nose)}</strong></span>
+        <span>Brow: <strong>${describeBrow(features.brow_h)}</strong></span>
+        <span>Eye spacing: <strong>${describeGap(features.eye_gap)}</strong></span>
       `;
-    } else {
-      $("reason").innerHTML = `No clear face detected — matched on color vibe instead.${runnersHtml}`;
-      $("features").innerHTML = "";
-    }
+    } else { $("features").innerHTML = ""; }
+    $("winnerCard").classList.add("revealed");
 
-    loading.style.display = "none";
-    result.style.display = "block";
-    again.style.display = "inline-block";
-  } catch (e) {
-    loading.style.display = "none";
-    errBox.textContent = "Couldn't reach PokeAPI. Check your connection and try again.";
+    // Runners-up (fetch sprites in parallel)
+    const [d2, d3] = await Promise.all([
+      fetch(`https://pokeapi.co/api/v2/pokemon/${second.p.id}`).then(r=>r.json()),
+      fetch(`https://pokeapi.co/api/v2/pokemon/${third.p.id}`).then(r=>r.json()),
+    ]);
+    $("runner1Img").src = d2.sprites.other?.["official-artwork"]?.front_default || d2.sprites.front_default;
+    $("runner1Name").textContent = capitalize(second.p.name);
+    $("runner1Pct").textContent = `${pct2}%`;
+    $("runner2Img").src = d3.sprites.other?.["official-artwork"]?.front_default || d3.sprites.front_default;
+    $("runner2Name").textContent = capitalize(third.p.name);
+    $("runner2Pct").textContent = `${pct3}%`;
+
+    resultsArea.style.display = "block";
+  } catch(e) {
+    spinner.style.display = "none";
+    analyzeStatus.style.display = "none";
+    errBox.textContent = "Couldn't reach PokéAPI — check your connection and try again.";
   }
 }
 
-function describeWH(v) { return v < 0.75 ? "long" : v < 0.92 ? "oval" : v < 1.02 ? "round" : "wide"; }
-function describeEye(v) { return v < 0.11 ? "narrow" : v < 0.15 ? "average" : v < 0.18 ? "large" : "huge"; }
-function describeJaw(v) { return v < 0.65 ? "pointed" : v < 0.80 ? "tapered" : v < 0.92 ? "balanced" : "broad/square"; }
-function describeNose(v) { return v < 0.10 ? "subtle" : v < 0.18 ? "average" : "prominent"; }
+// ─── Share ────────────────────────────────────────────────────────────────────
+shareBtn.addEventListener("click", async () => {
+  if (!lastResult) return;
+  const text = `I matched ${lastResult.pct}% with ${capitalize(lastResult.name)}! 🎮 Which Pokémon do YOU resemble?`;
+  const url = window.location.href;
+  if (navigator.share) {
+    try { await navigator.share({ title: "PokéMatch Result", text, url }); return; } catch(e) { /* user cancelled */ }
+  }
+  // Fallback: copy to clipboard
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    const orig = shareBtn.innerHTML;
+    shareBtn.innerHTML = "✅ Copied to clipboard!";
+    setTimeout(() => { shareBtn.innerHTML = orig; }, 2000);
+  } catch(e) {
+    // Last fallback: open tweet
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
+  }
+});
+
+// ─── Descriptors ─────────────────────────────────────────────────────────────
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function describeWH(v)     { return v<0.75?"long":v<0.92?"oval":v<1.02?"round":"wide"; }
+function describeEye(v)    { return v<0.11?"narrow":v<0.15?"average":v<0.18?"large":"huge"; }
+function describeJaw(v)    { return v<0.65?"pointed":v<0.80?"tapered":v<0.92?"balanced":"broad/square"; }
+function describeNose(v)   { return v<0.10?"subtle":v<0.18?"average":"prominent"; }
+function describeBrow(v)   { return v<0.38?"high (large forehead)":v<0.48?"average height":"low (heavy brow)"; }
+function describeGap(v)    { return v<0.18?"close-set":v<0.26?"average":"wide-set"; }
 </script>
 </body>
 </html>
