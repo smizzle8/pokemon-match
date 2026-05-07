@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Which Pokémon Do You Resemble?</title>
-<meta name="description" content="Upload a face photo — we use AI to detect 478 facial landmarks and match your bone structure to the Pokémon you most resemble." />
-<meta property="og:title" content="Which Pokémon Do You Resemble?" />
-<meta property="og:description" content="AI face matching with 478 facial landmarks. Discover your Pokémon doppelgänger." />
+<title>FaceMatch by Samee — Which character do you resemble?</title>
+<meta name="description" content="AI face matching by Samee — detect 478 facial landmarks and match your bone structure against Pokémon or Cartoon Network characters." />
+<meta property="og:title" content="FaceMatch by Samee" />
+<meta property="og:description" content="Match your face against Pokémon or Cartoon Network characters. 478 facial landmarks, 11-dimensional feature vector, z-score normalized similarity." />
 <meta property="og:image" content="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" />
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Which Pokémon Do You Resemble?" />
-<meta name="twitter:description" content="AI face matching with 478 facial landmarks. Discover your Pokémon doppelgänger." />
+<meta name="twitter:title" content="FaceMatch by Samee" />
+<meta name="twitter:description" content="Match your face against Pokémon or Cartoon Network characters using on-device AI." />
 <style>
   :root {
     --bg: #0f1226;
@@ -39,6 +39,37 @@
 
   /* Card container */
   .card { width: 100%; max-width: 580px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 24px; box-shadow: 0 20px 60px -20px rgba(0,0,0,.5); }
+
+  /* Mode toggle (segmented control) */
+  .mode-toggle {
+    display: flex; gap: 4px; background: #11142a; border: 1px solid var(--border);
+    border-radius: 999px; padding: 4px; margin: 0 auto 18px; width: fit-content;
+  }
+  .mode-btn {
+    background: transparent; color: var(--muted); border: none;
+    padding: 8px 18px; border-radius: 999px; font-weight: 700; font-size: 13px;
+    cursor: pointer; transition: all .2s; min-height: 36px;
+  }
+  .mode-btn.active { background: var(--accent); color: #1a1a1a; }
+  .mode-btn:not(.active):hover { color: var(--text); }
+
+  /* Cartoon Network avatar (no external images) */
+  .cn-avatar {
+    width: 180px; height: 180px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 72px; font-weight: 900; color: #fff;
+    margin: 0 auto; letter-spacing: -0.04em;
+    box-shadow: inset 0 -8px 24px rgba(0,0,0,0.25), 0 8px 32px -8px rgba(0,0,0,0.4);
+    text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    position: relative;
+  }
+  .cn-avatar.runner { width: 64px; height: 64px; font-size: 28px; box-shadow: inset 0 -4px 12px rgba(0,0,0,0.25); }
+  .cn-show-chip {
+    display: inline-block; background: rgba(255,255,255,0.08);
+    border: 1px solid var(--border); padding: 4px 13px; border-radius: 999px;
+    font-size: 12px; font-weight: 600; color: var(--text); letter-spacing: 0.02em;
+    margin-top: 4px;
+  }
 
   /* Upload zone */
   .drop { border: 2px dashed #3a4172; border-radius: 14px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color .15s, background .15s; }
@@ -142,10 +173,14 @@
 </style>
 </head>
 <body>
-  <h1><span class="y">Which</span> <span class="b">Pokémon</span> do you resemble<span class="y">?</span></h1>
-  <p class="tag">Upload a face photo — AI detects 478 facial landmarks and matches your bone structure to the Pokémon you most resemble.</p>
+  <h1><span class="y">Face</span><span class="b">Match</span> <span class="y">by Samee</span></h1>
+  <p class="tag">Upload a face photo — AI detects 478 facial landmarks and matches your bone structure against the character you most resemble.</p>
 
   <div class="card">
+    <div class="mode-toggle" role="tablist">
+      <button class="mode-btn active" id="modePokemon" type="button" data-mode="pokemon">Pokémon</button>
+      <button class="mode-btn" id="modeCartoon" type="button" data-mode="cartoon">Cartoon Network</button>
+    </div>
     <label class="drop" id="drop">
       <input type="file" id="file" accept="image/*" />
       <strong style="font-size:15px">Click or drag & drop a photo</strong>
@@ -237,9 +272,10 @@
   </div>
 
   <footer>
+    <strong style="color:var(--text)">Made by Samee</strong> ·
     Face detection: <a href="https://mediapipe.dev" target="_blank">MediaPipe</a> ·
-    Sprites &amp; data: <a href="https://pokeapi.co" target="_blank">PokéAPI</a> ·
-    Not affiliated with The Pokémon Company.
+    Sprites &amp; data: <a href="https://pokeapi.co" target="_blank">PokéAPI</a><br>
+    Not affiliated with The Pokémon Company or Cartoon Network.
   </footer>
 
 <script type="module">
@@ -322,6 +358,109 @@ const TYPE_COLORS = {
   fairy:"#D685AD", normal:"#A8A77A"
 };
 
+// ─── Cartoon Network characters (no external images — styled avatars) ─────────
+// Same 8 base features as Pokémon; will be augmented with forehead/symmetry/mouth_fill below.
+const CN_CHARACTERS = [
+  // Powerpuff Girls
+  { name:"Blossom",   show:"Powerpuff Girls",     initial:"B", color:"#ff6b9d", wh:1.10, eye:0.30, open:0.65, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"giant-eyed leader, round face" },
+  { name:"Bubbles",   show:"Powerpuff Girls",     initial:"B", color:"#5dc1f0", wh:1.10, eye:0.30, open:0.68, jaw:0.55, nose:0.02, mouth:0.18, brow_h:0.36, eye_gap:0.18, tag:"sweet huge-eyed cheery" },
+  { name:"Buttercup", show:"Powerpuff Girls",     initial:"B", color:"#7ed957", wh:1.10, eye:0.28, open:0.55, jaw:0.55, nose:0.02, mouth:0.20, brow_h:0.40, eye_gap:0.18, tag:"tomboy huge-eyed scrappy" },
+  { name:"Mojo Jojo", show:"Powerpuff Girls",     initial:"M", color:"#3a9b3a", wh:0.65, eye:0.10, open:0.22, jaw:0.65, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.20, tag:"long evil glaring" },
+  // Adventure Time
+  { name:"Finn",          show:"Adventure Time",  initial:"F", color:"#5fcde4", wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.05, mouth:0.30, brow_h:0.45, eye_gap:0.28, tag:"brave round-cheeked adventurous" },
+  { name:"Jake",          show:"Adventure Time",  initial:"J", color:"#f7b955", wh:1.10, eye:0.10, open:0.30, jaw:1.00, nose:0.05, mouth:0.55, brow_h:0.50, eye_gap:0.30, tag:"chill wide-grinned dog" },
+  { name:"Princess Bubblegum", show:"Adventure Time", initial:"P", color:"#ff9ed8", wh:0.85, eye:0.18, open:0.55, jaw:0.65, nose:0.04, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"smart round elegant pink" },
+  { name:"Marceline",     show:"Adventure Time",  initial:"M", color:"#9a8fcf", wh:0.72, eye:0.16, open:0.40, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.38, eye_gap:0.22, tag:"long mysterious cool vampire" },
+  { name:"Ice King",      show:"Adventure Time",  initial:"I", color:"#7dc6e0", wh:0.65, eye:0.10, open:0.28, jaw:0.60, nose:0.28, mouth:0.22, brow_h:0.50, eye_gap:0.18, tag:"long pointy nose lonely" },
+  { name:"BMO",           show:"Adventure Time",  initial:"B", color:"#7ec98a", wh:1.20, eye:0.20, open:0.60, jaw:1.10, nose:0.00, mouth:0.30, brow_h:0.45, eye_gap:0.30, tag:"square boxy little buddy" },
+  // Steven Universe
+  { name:"Steven",        show:"Steven Universe", initial:"S", color:"#ff5d5d", wh:1.05, eye:0.20, open:0.55, jaw:0.65, nose:0.05, mouth:0.22, brow_h:0.42, eye_gap:0.22, tag:"round chubby-cheeked wholesome" },
+  { name:"Garnet",        show:"Steven Universe", initial:"G", color:"#5b2a86", wh:0.85, eye:0.10, open:0.20, jaw:0.92, nose:0.10, mouth:0.30, brow_h:0.50, eye_gap:0.28, tag:"square stoic strong leader" },
+  { name:"Pearl",         show:"Steven Universe", initial:"P", color:"#f0d8c6", wh:0.65, eye:0.16, open:0.45, jaw:0.55, nose:0.18, mouth:0.16, brow_h:0.36, eye_gap:0.20, tag:"long pointed elegant precise" },
+  { name:"Amethyst",      show:"Steven Universe", initial:"A", color:"#a164d6", wh:1.05, eye:0.18, open:0.45, jaw:0.85, nose:0.06, mouth:0.26, brow_h:0.45, eye_gap:0.26, tag:"round mischievous laid-back" },
+  { name:"Connie",        show:"Steven Universe", initial:"C", color:"#d18a5a", wh:0.85, eye:0.18, open:0.55, jaw:0.62, nose:0.05, mouth:0.20, brow_h:0.40, eye_gap:0.24, tag:"oval thoughtful sharp" },
+  // Foster's Home
+  { name:"Mac",           show:"Foster's Home",   initial:"M", color:"#5f9bd5", wh:1.00, eye:0.20, open:0.55, jaw:0.60, nose:0.04, mouth:0.20, brow_h:0.40, eye_gap:0.22, tag:"round big-eyed earnest kid" },
+  { name:"Bloo",          show:"Foster's Home",   initial:"B", color:"#7ec0ee", wh:0.85, eye:0.22, open:0.65, jaw:0.55, nose:0.00, mouth:0.18, brow_h:0.32, eye_gap:0.20, tag:"oval blob huge-eyed mischief" },
+  { name:"Eduardo",       show:"Foster's Home",   initial:"E", color:"#9d5ec4", wh:1.05, eye:0.16, open:0.45, jaw:0.95, nose:0.08, mouth:0.32, brow_h:0.50, eye_gap:0.28, tag:"big-jawed gentle softie" },
+  { name:"Wilt",          show:"Foster's Home",   initial:"W", color:"#e85e5e", wh:0.55, eye:0.16, open:0.50, jaw:0.55, nose:0.05, mouth:0.24, brow_h:0.32, eye_gap:0.18, tag:"super tall thin polite" },
+  { name:"Coco",          show:"Foster's Home",   initial:"C", color:"#f7d04a", wh:0.70, eye:0.18, open:0.45, jaw:0.60, nose:0.30, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"long beaky chaotic" },
+  // Amazing World of Gumball
+  { name:"Gumball",       show:"World of Gumball", initial:"G", color:"#5dc1f0", wh:1.00, eye:0.22, open:0.55, jaw:0.65, nose:0.04, mouth:0.22, brow_h:0.40, eye_gap:0.24, tag:"round blue-cat optimistic" },
+  { name:"Darwin",        show:"World of Gumball", initial:"D", color:"#ff8b3d", wh:1.05, eye:0.24, open:0.60, jaw:0.70, nose:0.04, mouth:0.22, brow_h:0.38, eye_gap:0.26, tag:"round goldfish wide-eyed" },
+  { name:"Anais",         show:"World of Gumball", initial:"A", color:"#ffb6c8", wh:1.05, eye:0.22, open:0.55, jaw:0.62, nose:0.03, mouth:0.18, brow_h:0.40, eye_gap:0.22, tag:"round bunny smart small" },
+  // Dexter's Laboratory
+  { name:"Dexter",        show:"Dexter's Lab",    initial:"D", color:"#f7b955", wh:1.00, eye:0.14, open:0.30, jaw:0.62, nose:0.06, mouth:0.20, brow_h:0.45, eye_gap:0.20, tag:"glasses round genius small" },
+  { name:"Dee Dee",       show:"Dexter's Lab",    initial:"D", color:"#ffb6c8", wh:0.85, eye:0.20, open:0.60, jaw:0.55, nose:0.04, mouth:0.22, brow_h:0.36, eye_gap:0.24, tag:"oval ditzy big-eyed dancer" },
+  { name:"Mandark",       show:"Dexter's Lab",    initial:"M", color:"#5b2a86", wh:0.62, eye:0.10, open:0.20, jaw:0.58, nose:0.20, mouth:0.20, brow_h:0.50, eye_gap:0.18, tag:"long sinister hair-helmet" },
+  // Regular Show
+  { name:"Mordecai",      show:"Regular Show",    initial:"M", color:"#5b9bd5", wh:0.65, eye:0.14, open:0.35, jaw:0.62, nose:0.20, mouth:0.18, brow_h:0.42, eye_gap:0.22, tag:"long blue jay slacker" },
+  { name:"Rigby",         show:"Regular Show",    initial:"R", color:"#a07a4a", wh:0.85, eye:0.14, open:0.40, jaw:0.65, nose:0.10, mouth:0.22, brow_h:0.48, eye_gap:0.20, tag:"oval scruffy raccoon" },
+  // Johnny Bravo, Courage, Ed Edd Eddy, Samurai Jack, Ben 10, KND
+  { name:"Johnny Bravo",  show:"Johnny Bravo",    initial:"J", color:"#f7d04a", wh:0.95, eye:0.10, open:0.20, jaw:1.10, nose:0.10, mouth:0.30, brow_h:0.55, eye_gap:0.24, tag:"chiseled massive-jawed cocky" },
+  { name:"Courage",       show:"Courage Cowardly Dog", initial:"C", color:"#e85e9b", wh:1.10, eye:0.22, open:0.55, jaw:0.55, nose:0.08, mouth:0.18, brow_h:0.42, eye_gap:0.18, tag:"round terrified pink dog" },
+  { name:"Ed",            show:"Ed Edd n Eddy",   initial:"E", color:"#7ed957", wh:0.95, eye:0.12, open:0.20, jaw:0.95, nose:0.08, mouth:0.45, brow_h:0.55, eye_gap:0.22, tag:"square dim wide-grinned" },
+  { name:"Edd (Double D)",show:"Ed Edd n Eddy",   initial:"D", color:"#7ec0ee", wh:0.85, eye:0.13, open:0.30, jaw:0.62, nose:0.06, mouth:0.18, brow_h:0.40, eye_gap:0.20, tag:"oval polite gap-toothed smart" },
+  { name:"Eddy",          show:"Ed Edd n Eddy",   initial:"E", color:"#f7b955", wh:1.05, eye:0.13, open:0.35, jaw:0.85, nose:0.06, mouth:0.30, brow_h:0.48, eye_gap:0.24, tag:"round scheming greedy short" },
+  { name:"Samurai Jack",  show:"Samurai Jack",    initial:"J", color:"#1a1a1a", wh:0.78, eye:0.10, open:0.25, jaw:0.85, nose:0.18, mouth:0.20, brow_h:0.46, eye_gap:0.22, tag:"chiseled stoic samurai" },
+  { name:"Ben Tennyson",  show:"Ben 10",          initial:"B", color:"#7ed957", wh:0.95, eye:0.16, open:0.45, jaw:0.70, nose:0.06, mouth:0.24, brow_h:0.42, eye_gap:0.24, tag:"average-faced cheeky teen hero" },
+  { name:"Numbuh 1",      show:"Kids Next Door",  initial:"1", color:"#e85e5e", wh:0.95, eye:0.10, open:0.25, jaw:0.70, nose:0.06, mouth:0.18, brow_h:0.48, eye_gap:0.22, tag:"round bald sunglasses tactical" },
+  { name:"Numbuh 4",      show:"Kids Next Door",  initial:"4", color:"#f7d04a", wh:0.92, eye:0.12, open:0.28, jaw:0.72, nose:0.06, mouth:0.22, brow_h:0.50, eye_gap:0.24, tag:"oval scrappy blonde tough" },
+];
+
+// ─── Augment datasets with derived/default features ──────────────────────────
+// Add 3 new ML features (forehead, symmetry, mouth_fill) with sensible defaults
+// per character, so we can score in 11D feature space.
+function augment(arr) {
+  for (const p of arr) {
+    // forehead = 1 - brow_h adjusted: small forehead when brow sits high (low brow_h),
+    // large forehead when brow sits low. Independent dimension from brow_h via clamping.
+    if (p.forehead === undefined) p.forehead = Math.max(0.1, Math.min(0.6, p.brow_h * 0.9));
+    // symmetry: cartoons & Pokémon are mostly drawn symmetric; gengar/jake-style
+    // wide grins are slightly asymmetric. Default low, hand-tune outliers below.
+    if (p.symmetry === undefined) p.symmetry = 0.04;
+    // mouth_fill: lip thickness ratio. Estimate from mouth size: small mouths
+    // often visually pursed (low fill), wide mouths often open (higher fill).
+    if (p.mouth_fill === undefined) p.mouth_fill = Math.max(0.15, Math.min(0.55, p.mouth * 0.7));
+  }
+}
+augment(POKEMON);
+augment(CN_CHARACTERS);
+// Hand-tune asymmetric known outliers
+for (const x of POKEMON) if (["gengar","gyarados","snubbull"].includes(x.name)) x.symmetry = 0.10;
+for (const x of CN_CHARACTERS) if (["Jake","Mojo Jojo","Eddy"].includes(x.name)) x.symmetry = 0.09;
+
+// ─── Z-score normalization stats ─────────────────────────────────────────────
+// Compute population mean+std per feature for a dataset. Used to put all
+// features on the same scale before computing weighted distance — much more
+// meaningful than raw weighted Euclidean when features have different ranges.
+const FEATURE_KEYS = ["wh","eye","open","jaw","nose","mouth","brow_h","eye_gap","forehead","symmetry","mouth_fill"];
+const FEATURE_WEIGHTS = { wh:2.5, eye:1.5, open:1.2, jaw:2.0, nose:1.5, mouth:1.0, brow_h:1.2, eye_gap:1.0, forehead:1.1, symmetry:0.8, mouth_fill:0.9 };
+
+function computeStats(dataset) {
+  const stats = {};
+  for (const k of FEATURE_KEYS) {
+    const vals = dataset.map(x => x[k]).filter(v => typeof v === "number");
+    const mean = vals.reduce((s,v)=>s+v,0) / vals.length;
+    const variance = vals.reduce((s,v)=>s+(v-mean)**2,0) / vals.length;
+    stats[k] = { mean, std: Math.sqrt(variance) || 1 };
+  }
+  return stats;
+}
+const POKEMON_STATS = computeStats(POKEMON);
+const CN_STATS      = computeStats(CN_CHARACTERS);
+
+function zStructuralDistance(f, p, stats) {
+  let d = 0;
+  for (const k of FEATURE_KEYS) {
+    if (typeof p[k] !== "number" || typeof f[k] !== "number") continue;
+    const fz = (f[k] - stats[k].mean) / stats[k].std;
+    const pz = (p[k] - stats[k].mean) / stats[k].std;
+    d += FEATURE_WEIGHTS[k] * (fz - pz) ** 2;
+  }
+  return Math.sqrt(d);
+}
+
 // ─── DOM refs ────────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const drop=$("drop"), fileInput=$("file");
@@ -400,7 +539,7 @@ again.addEventListener("click", () => {
   resultsArea.style.display = "none";
   errBox.textContent = "";
   lastResult = null;
-  document.title = "Which Pokémon Do You Resemble?";
+  document.title = "FaceMatch by Samee — Which character do you resemble?";
   faceCanvas.getContext("2d").clearRect(0, 0, faceCanvas.width, faceCanvas.height);
 });
 
@@ -457,14 +596,34 @@ function computeFeatures(lm) {
   // Eye gap: inner canthus to inner canthus / face width
   const eye_gap = dist(lm[133], lm[362]) / Math.max(faceW, 0.001);
 
-  return { wh: faceW/faceH, eye: eyeW/faceW, open: eyeH/Math.max(eyeW,0.001), jaw: jawW/faceW, nose: noseLen/faceH, mouth: mouthW/faceW, brow_h, eye_gap };
-}
+  // Forehead: independent from brow_h via different reference points
+  // Use top of head (lm[10]) to upper brow (lm[107]/lm[336]) — forehead height
+  const upperBrowY = (lm[107].y + lm[336].y) / 2;
+  const forehead = (upperBrowY - top.y) / Math.max(faceH, 0.001);
 
-function structuralDistance(f, p) {
-  const w = { wh:2.5, eye:1.5, open:1.2, jaw:2.0, nose:1.5, mouth:1.0, brow_h:1.2, eye_gap:1.0 };
-  let d = 0;
-  for (const k of Object.keys(w)) d += w[k] * (f[k] - p[k]) ** 2;
-  return Math.sqrt(d);
+  // Mouth fullness: vertical mouth opening / horizontal mouth width
+  const mouthTop = lm[13], mouthBot = lm[14];
+  const mouthH = dist(mouthTop, mouthBot);
+  const mouth_fill = mouthH / Math.max(mouthW, 0.001);
+
+  // Facial symmetry: mirror left landmarks across vertical center, compute
+  // average deviation from the corresponding right landmarks. Lower = more symmetric.
+  const cx = (cheekL.x + cheekR.x) / 2;
+  const symPairs = [[33,263],[133,362],[159,386],[145,374],[172,397],[61,291],[105,334]];
+  let symSum = 0;
+  for (const [li, ri] of symPairs) {
+    const lp = lm[li], rp = lm[ri];
+    // mirrored left point: x → 2*cx - lp.x
+    const mirrLx = 2 * cx - lp.x;
+    symSum += Math.hypot(mirrLx - rp.x, lp.y - rp.y);
+  }
+  const symmetry = (symSum / symPairs.length) / Math.max(faceW, 0.001);
+
+  return {
+    wh: faceW/faceH, eye: eyeW/faceW, open: eyeH/Math.max(eyeW,0.001),
+    jaw: jawW/faceW, nose: noseLen/faceH, mouth: mouthW/faceW,
+    brow_h, eye_gap, forehead, symmetry, mouth_fill
+  };
 }
 
 // ─── Color helpers ────────────────────────────────────────────────────────────
@@ -499,11 +658,34 @@ function dominantColor(img) {
   return [Math.round(sums[bi][0]/sums[bi][3]),Math.round(sums[bi][1]/sums[bi][3]),Math.round(sums[bi][2]/sums[bi][3])];
 }
 
-// Convert raw distance to 0–100% match score
+// Convert raw z-score distance to 0–100% match score.
+// Z-score distances are typically larger; tune so a "good" match is ~75-90%.
 function distToPercent(d) {
-  // Empirically: d~0 = 100%, d~2.5 = 0%. Tuned so typical matches land 60-85%.
-  return Math.max(0, Math.min(100, Math.round(100 * Math.exp(-d * 1.6))));
+  return Math.max(0, Math.min(100, Math.round(100 * Math.exp(-d * 0.45))));
 }
+
+// ─── Mode state ──────────────────────────────────────────────────────────────
+let mode = "pokemon"; // "pokemon" | "cartoon"
+
+document.querySelectorAll(".mode-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    mode = btn.dataset.mode;
+    // Clear any prior result so user picks fresh
+    fileInput.value = "";
+    previewWrap.classList.remove("show");
+    resultsArea.style.display = "none";
+    errBox.textContent = "";
+    lastResult = null;
+    document.title = mode === "pokemon"
+      ? "FaceMatch by Samee — Which character do you resemble?"
+      : "FaceMatch by Samee — Cartoon Network mode";
+    statusEl.textContent = mode === "pokemon"
+      ? "Match against 52 Pokémon."
+      : "Match against 36 Cartoon Network characters.";
+  });
+});
 
 // ─── Analyze ─────────────────────────────────────────────────────────────────
 async function analyze(img) {
@@ -517,16 +699,27 @@ async function analyze(img) {
       }
     } catch(e) { console.error("face detect failed", e); }
   }
+  const dataset = mode === "pokemon" ? POKEMON : CN_CHARACTERS;
+  const stats   = mode === "pokemon" ? POKEMON_STATS : CN_STATS;
   const color = dominantColor(img);
   let scored;
   if (features) {
-    scored = POKEMON.map(p => {
-      const sd = structuralDistance(features, p);
-      const cd = colorDistance(color, p.rgb);
-      return { p, dist: sd * 0.85 + cd * 0.15, sd, cd };
+    scored = dataset.map(p => {
+      const sd = zStructuralDistance(features, p, stats);
+      // Only blend color in for Pokémon (CN avatars are arbitrary brand colors)
+      let dist = sd;
+      if (mode === "pokemon" && p.rgb) {
+        const cd = colorDistance(color, p.rgb);
+        dist = sd * 0.85 + cd * 0.15;
+      }
+      return { p, dist };
     }).sort((a,b)=>a.dist-b.dist);
   } else {
-    scored = POKEMON.map(p => ({ p, dist: colorDistance(color, p.rgb), sd:null, cd:null })).sort((a,b)=>a.dist-b.dist);
+    // No face detected: in pokemon mode use color, in CN mode pick random-ish via name
+    scored = dataset.map(p => ({
+      p,
+      dist: mode === "pokemon" && p.rgb ? colorDistance(color, p.rgb) : Math.random()
+    })).sort((a,b)=>a.dist-b.dist);
   }
   await showResult(scored, color, features);
 }
@@ -551,22 +744,43 @@ async function showResult(scored, rgb, features) {
     const pct1 = distToPercent(first.dist);
     const pct2 = distToPercent(second.dist);
     const pct3 = distToPercent(third.dist);
-    lastResult = { name: first.p.name, pct: pct1 };
-    document.title = `You match ${capitalize(first.p.name)}! — PokéMatch`;
+    const winnerName = mode === "pokemon" ? capitalize(first.p.name) : first.p.name;
+    lastResult = { name: winnerName, pct: pct1, show: first.p.show || null };
+    document.title = mode === "pokemon"
+      ? `You match ${winnerName}! — FaceMatch by Samee`
+      : `You match ${winnerName} from ${first.p.show}! — FaceMatch by Samee`;
 
-    // Fetch winner data from PokeAPI
-    const data = await fetch(`https://pokeapi.co/api/v2/pokemon/${first.p.id}`).then(r=>r.json());
-    const sprite = data.sprites.other?.["official-artwork"]?.front_default || data.sprites.front_default;
-    const types = data.types.map(t=>t.type.name);
+    if (mode === "pokemon") {
+      // ── Pokémon path (PokeAPI) ──
+      const data = await fetch(`https://pokeapi.co/api/v2/pokemon/${first.p.id}`).then(r=>r.json());
+      const sprite = data.sprites.other?.["official-artwork"]?.front_default || data.sprites.front_default;
+      const types = data.types.map(t=>t.type.name);
+      renderWinnerSprite(sprite);
+      $("pokeName").textContent = winnerName;
+      $("matchPct").innerHTML = `${pct1}<span>%</span>`;
+      $("pokeTypes").innerHTML = types.map(t=>`<span class="type-chip" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`).join("");
+      $("reason").innerHTML = features
+        ? `Your face reads as <strong>${first.p.tag}</strong>.`
+        : `No face detected — matched on color vibe instead.`;
+      const [d2, d3] = await Promise.all([
+        fetch(`https://pokeapi.co/api/v2/pokemon/${second.p.id}`).then(r=>r.json()),
+        fetch(`https://pokeapi.co/api/v2/pokemon/${third.p.id}`).then(r=>r.json()),
+      ]);
+      renderRunnerSprite(1, d2.sprites.other?.["official-artwork"]?.front_default || d2.sprites.front_default, capitalize(second.p.name), pct2);
+      renderRunnerSprite(2, d3.sprites.other?.["official-artwork"]?.front_default || d3.sprites.front_default, capitalize(third.p.name), pct3);
+    } else {
+      // ── Cartoon Network path (avatar circles) ──
+      renderWinnerAvatar(first.p);
+      $("pokeName").textContent = winnerName;
+      $("matchPct").innerHTML = `${pct1}<span>%</span>`;
+      $("pokeTypes").innerHTML = `<span class="cn-show-chip">${first.p.show}</span>`;
+      $("reason").innerHTML = features
+        ? `Your face reads as <strong>${first.p.tag}</strong>.`
+        : `No face detected — matched on best guess.`;
+      renderRunnerAvatar(1, second.p, pct2);
+      renderRunnerAvatar(2, third.p, pct3);
+    }
 
-    // Winner
-    $("pokeImg").src = sprite;
-    $("pokeName").textContent = capitalize(first.p.name);
-    $("matchPct").innerHTML = `${pct1}<span>%</span>`;
-    $("pokeTypes").innerHTML = types.map(t=>`<span class="type-chip" style="background:${TYPE_COLORS[t]||'#555'}">${t}</span>`).join("");
-    $("reason").innerHTML = features
-      ? `Your face reads as <strong>${first.p.tag}</strong>.`
-      : `No face detected — matched on color vibe instead.`;
     if (features) {
       $("features").innerHTML = `
         <span>Face shape: <strong>${describeWH(features.wh)}</strong></span>
@@ -575,46 +789,92 @@ async function showResult(scored, rgb, features) {
         <span>Nose: <strong>${describeNose(features.nose)}</strong></span>
         <span>Brow: <strong>${describeBrow(features.brow_h)}</strong></span>
         <span>Eye spacing: <strong>${describeGap(features.eye_gap)}</strong></span>
+        <span>Forehead: <strong>${describeFH(features.forehead)}</strong></span>
+        <span>Symmetry: <strong>${describeSym(features.symmetry)}</strong></span>
       `;
     } else { $("features").innerHTML = ""; }
     $("winnerCard").classList.add("revealed");
 
-    // Runners-up (fetch sprites in parallel)
-    const [d2, d3] = await Promise.all([
-      fetch(`https://pokeapi.co/api/v2/pokemon/${second.p.id}`).then(r=>r.json()),
-      fetch(`https://pokeapi.co/api/v2/pokemon/${third.p.id}`).then(r=>r.json()),
-    ]);
-    $("runner1Img").src = d2.sprites.other?.["official-artwork"]?.front_default || d2.sprites.front_default;
-    $("runner1Name").textContent = capitalize(second.p.name);
-    $("runner1Pct").textContent = `${pct2}%`;
-    $("runner2Img").src = d3.sprites.other?.["official-artwork"]?.front_default || d3.sprites.front_default;
-    $("runner2Name").textContent = capitalize(third.p.name);
-    $("runner2Pct").textContent = `${pct3}%`;
-
     resultsArea.style.display = "block";
   } catch(e) {
+    console.error(e);
     spinner.style.display = "none";
     analyzeStatus.style.display = "none";
-    errBox.textContent = "Couldn't reach PokéAPI — check your connection and try again.";
+    errBox.textContent = mode === "pokemon"
+      ? "Couldn't reach PokéAPI — check your connection and try again."
+      : "Something went wrong rendering the result.";
   }
+}
+
+// ─── Renderers ───────────────────────────────────────────────────────────────
+function renderWinnerSprite(src) {
+  const img = $("pokeImg");
+  img.style.display = "inline-block";
+  img.src = src;
+  // Remove any prior CN avatar
+  const existing = document.getElementById("cnWinnerAvatar");
+  if (existing) existing.remove();
+}
+function renderWinnerAvatar(p) {
+  $("pokeImg").style.display = "none";
+  let av = document.getElementById("cnWinnerAvatar");
+  if (!av) {
+    av = document.createElement("div");
+    av.id = "cnWinnerAvatar";
+    av.className = "cn-avatar";
+    $("pokeImg").after(av);
+  }
+  av.textContent = p.initial;
+  av.style.background = `linear-gradient(135deg, ${p.color} 0%, ${darken(p.color, 0.3)} 100%)`;
+}
+function renderRunnerSprite(idx, src, name, pct) {
+  const img = $(`runner${idx}Img`);
+  img.style.display = "inline-block";
+  img.src = src;
+  $(`runner${idx}Name`).textContent = name;
+  $(`runner${idx}Pct`).textContent = `${pct}%`;
+  const existing = document.getElementById(`cnRunner${idx}Avatar`);
+  if (existing) existing.remove();
+}
+function renderRunnerAvatar(idx, p, pct) {
+  $(`runner${idx}Img`).style.display = "none";
+  let av = document.getElementById(`cnRunner${idx}Avatar`);
+  if (!av) {
+    av = document.createElement("div");
+    av.id = `cnRunner${idx}Avatar`;
+    av.className = "cn-avatar runner";
+    $(`runner${idx}Img`).after(av);
+  }
+  av.textContent = p.initial;
+  av.style.background = `linear-gradient(135deg, ${p.color} 0%, ${darken(p.color, 0.3)} 100%)`;
+  $(`runner${idx}Name`).textContent = p.name;
+  $(`runner${idx}Pct`).textContent = `${pct}%`;
+}
+function darken(hex, amount) {
+  const c = hex.replace("#",""); const num = parseInt(c, 16);
+  let r=(num>>16)&255, g=(num>>8)&255, b=num&255;
+  r=Math.max(0,Math.floor(r*(1-amount)));
+  g=Math.max(0,Math.floor(g*(1-amount)));
+  b=Math.max(0,Math.floor(b*(1-amount)));
+  return `rgb(${r},${g},${b})`;
 }
 
 // ─── Share ────────────────────────────────────────────────────────────────────
 shareBtn.addEventListener("click", async () => {
   if (!lastResult) return;
-  const text = `I matched ${lastResult.pct}% with ${capitalize(lastResult.name)}! 🎮 Which Pokémon do YOU resemble?`;
+  const text = lastResult.show
+    ? `I matched ${lastResult.pct}% with ${lastResult.name} from ${lastResult.show}! 🎨 Which Cartoon Network character do YOU resemble? — FaceMatch by Samee`
+    : `I matched ${lastResult.pct}% with ${lastResult.name}! 🎮 Which Pokémon do YOU resemble? — FaceMatch by Samee`;
   const url = window.location.href;
   if (navigator.share) {
-    try { await navigator.share({ title: "PokéMatch Result", text, url }); return; } catch(e) { /* user cancelled */ }
+    try { await navigator.share({ title: "FaceMatch by Samee", text, url }); return; } catch(e) { /* user cancelled */ }
   }
-  // Fallback: copy to clipboard
   try {
     await navigator.clipboard.writeText(`${text}\n${url}`);
     const orig = shareBtn.innerHTML;
     shareBtn.innerHTML = "✅ Copied to clipboard!";
     setTimeout(() => { shareBtn.innerHTML = orig; }, 2000);
   } catch(e) {
-    // Last fallback: open tweet
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`, "_blank");
   }
 });
@@ -627,6 +887,8 @@ function describeJaw(v)    { return v<0.65?"pointed":v<0.80?"tapered":v<0.92?"ba
 function describeNose(v)   { return v<0.10?"subtle":v<0.18?"average":"prominent"; }
 function describeBrow(v)   { return v<0.38?"high (large forehead)":v<0.48?"average height":"low (heavy brow)"; }
 function describeGap(v)    { return v<0.18?"close-set":v<0.26?"average":"wide-set"; }
+function describeFH(v)     { return v<0.18?"compact":v<0.30?"average":"tall"; }
+function describeSym(v)    { return v<0.04?"highly symmetric":v<0.08?"symmetric":"asymmetric"; }
 </script>
 </body>
 </html>
